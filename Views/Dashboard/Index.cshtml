@@ -1,6 +1,19 @@
-﻿@{
+@{
     ViewData["Title"] = "Dashboard";
     Layout = "_Layout";
+}
+
+@if (ViewBag.Success != null)
+{
+    <div style="background:rgba(92,122,90,0.15);border:1px solid rgba(92,122,90,0.3);border-radius:8px;padding:14px;margin-bottom:20px;color:#8aac87;font-size:13px;">
+        ✓ @ViewBag.Success
+    </div>
+}
+@if (ViewBag.Error != null)
+{
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-bottom:20px;color:#fca5a5;font-size:13px;">
+        <strong>Error:</strong> @ViewBag.Error
+    </div>
 }
 
 <div class="mb-6" style="display:flex;align-items:center;justify-content:space-between">
@@ -21,7 +34,7 @@
     </div>
     <div style="display:flex;gap:32px">
         <div style="text-align:right">
-            <div style="font-size:10px;color:var(--txm);margin-bottom:4px">Business travel</div>
+            <div style="font-size:10px;color:var(--txm);margin-bottom:4px">Flight emissions</div>
             <div style="font-size:20px;font-weight:500;color:var(--lv)">@ViewBag.FlightEmissions t</div>
         </div>
         <div style="text-align:right">
@@ -34,22 +47,22 @@
 <!-- STATS -->
 <div class="grid-3 mb-6">
     <div class="stat-card">
-        <div class="stat-label">Trips processed</div>
-        <div class="stat-val">@ViewBag.TotalTrips</div>
-        <div class="stat-sub">business journeys</div>
-        <div class="stat-bar"><div class="stat-fill" style="width:70%;background:var(--sc)"></div></div>
+        <div class="stat-label">Flights</div>
+        <div class="stat-val">@ViewBag.FlightCount</div>
+        <div class="stat-sub">@ViewBag.FlightEmissions tCO₂e</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:70%;background:var(--lv)"></div></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Audit coverage</div>
-        <div class="stat-val">100%</div>
-        <div class="stat-sub">all trips have formula trail</div>
-        <div class="stat-bar"><div class="stat-fill" style="width:100%;background:var(--lv)"></div></div>
+        <div class="stat-label">Rail</div>
+        <div class="stat-val">@ViewBag.TrainCount</div>
+        <div class="stat-sub">@ViewBag.TrainEmissions tCO₂e</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:50%;background:var(--sc)"></div></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">DEFRA version</div>
-        <div class="stat-val">2025</div>
-        <div class="stat-sub">factors current</div>
-        <div class="stat-bar"><div class="stat-fill" style="width:100%;background:var(--sc)"></div></div>
+        <div class="stat-label">Car / Taxi / Ferry</div>
+        <div class="stat-val">@ViewBag.CarCount</div>
+        <div class="stat-sub">@ViewBag.CarEmissions tCO₂e</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:40%;background:rgba(255,255,255,0.2)"></div></div>
     </div>
 </div>
 
@@ -59,7 +72,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
             <div>
                 <div class="section-title" style="margin:0">Monthly emissions</div>
-                <div style="font-size:11px;color:var(--txm);margin-top:2px">tCO₂e by transport mode</div>
+                <div style="font-size:11px;color:var(--txm);margin-top:2px">tCO₂e by transport mode — last 12 months</div>
             </div>
             <div style="display:flex;gap:12px">
                 <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--txm)"><div style="width:7px;height:7px;border-radius:2px;background:var(--sc)"></div>Flights</div>
@@ -67,20 +80,7 @@
                 <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--txm)"><div style="width:7px;height:7px;border-radius:2px;background:rgba(255,255,255,0.2)"></div>Car</div>
             </div>
         </div>
-        <div style="display:flex;align-items:flex-end;gap:6px;height:90px">
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:10px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:38px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Apr</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:3px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:8px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:25px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">May</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:6px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:13px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:50px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Jun</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:3px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:7px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:20px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Jul</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:5px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:10px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:35px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Aug</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:7px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:15px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:58px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Sep</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:9px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:30px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Oct</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:5px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:12px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:44px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Nov</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:3px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:7px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:23px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Dec</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:10px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:37px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Jan</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:9px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:33px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Feb</span></div>
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:6px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:14px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:54px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Mar</span></div>
-        </div>
+        <div id="bar-chart" style="display:flex;align-items:flex-end;gap:6px;height:90px"></div>
     </div>
 
     <div class="card card-p">
@@ -113,9 +113,9 @@
             </tr>
         </thead>
         <tbody>
-            @if (ViewBag.RecentTrips != null)
+            @if (ViewBag.RecentTrips != null && ((IEnumerable<CarbonTrack.Models.Trip>)ViewBag.RecentTrips).Any())
             {
-                foreach (var trip in ViewBag.RecentTrips)
+                foreach (var trip in (IEnumerable<CarbonTrack.Models.Trip>)ViewBag.RecentTrips)
                 {
                     <tr>
                         <td style="color:var(--txm)">@trip.TripDate.ToString("dd MMM yyyy")</td>
@@ -143,3 +143,32 @@
         </tbody>
     </table>
 </div>
+
+<script>
+(function () {
+    const data = @Html.Raw(ViewBag.MonthlyData ?? "[]");
+    const chart = document.getElementById('bar-chart');
+    if (!chart || !data.length) return;
+
+    const maxVal = Math.max(...data.map(d => d.Flights + d.Rail + d.Car), 0.001);
+    const BAR_H = 78;
+
+    chart.innerHTML = data.map(d => {
+        const total = d.Flights + d.Rail + d.Car;
+        const flightH = Math.round((d.Flights / maxVal) * BAR_H);
+        const railH = Math.round((d.Rail / maxVal) * BAR_H);
+        const carH = Math.round((d.Car / maxVal) * BAR_H);
+        const tip = total > 0
+            ? `${d.Label}: ${total.toFixed(3)} tCO₂e (F:${d.Flights} R:${d.Rail} C:${d.Car})`
+            : `${d.Label}: no trips`;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="${tip}">
+            <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:${BAR_H}px;gap:1px">
+                <div style="height:${carH}px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0;min-height:${carH > 0 ? 2 : 0}px"></div>
+                <div style="height:${railH}px;background:var(--lv);border-radius:2px 2px 0 0;min-height:${railH > 0 ? 2 : 0}px"></div>
+                <div style="height:${flightH}px;background:var(--sc);border-radius:2px 2px 0 0;min-height:${flightH > 0 ? 2 : 0}px"></div>
+            </div>
+            <span style="font-size:9px;color:var(--txm)">${d.Label}</span>
+        </div>`;
+    }).join('');
+})();
+</script>
