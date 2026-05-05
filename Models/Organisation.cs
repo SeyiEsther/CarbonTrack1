@@ -17,7 +17,7 @@ namespace CarbonTrack.Models
 
         public string Plan { get; set; } = "Free Trial";
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Trip> Trips { get; set; }
     }

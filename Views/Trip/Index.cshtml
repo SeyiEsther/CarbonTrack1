@@ -1,14 +1,25 @@
-﻿@model IEnumerable<CarbonTrack.Models.Trip>
+@model IEnumerable<CarbonTrack.Models.Trip>
 
 @{
     ViewData["Title"] = "Trip Log";
     Layout = "_Layout";
+    var trips = Model ?? Enumerable.Empty<CarbonTrack.Models.Trip>();
+    var totalCo2 = trips.Sum(t => t.KgCO2e) / 1000;
+    var totalTrips = trips.Count();
+    var flightCo2 = trips.Where(t => t.TransportMode.StartsWith("Flight")).Sum(t => t.KgCO2e) / 1000;
 }
 
-@{
-    var totalCo2 = Model.Sum(t => t.KgCO2e) / 1000;
-    var totalTrips = Model.Count();
-    var flightCo2 = Model.Where(t => t.TransportMode.StartsWith("Flight")).Sum(t => t.KgCO2e) / 1000;
+@if (ViewBag.Success != null)
+{
+    <div style="background:rgba(92,122,90,0.15);border:1px solid rgba(92,122,90,0.3);border-radius:8px;padding:14px;margin-bottom:20px;color:#8aac87;font-size:13px;">
+        ✓ @ViewBag.Success
+    </div>
+}
+@if (ViewBag.Error != null)
+{
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-bottom:20px;color:#fca5a5;font-size:13px;">
+        <strong>Error:</strong> @ViewBag.Error
+    </div>
 }
 
 <div class="mb-6" style="display:flex;align-items:center;justify-content:space-between">
@@ -52,7 +63,7 @@
         <span class="lv-badge">DEFRA 2025 ✓</span>
     </div>
 
-    @if (!Model.Any())
+    @if (!trips.Any())
     {
         <div style="text-align:center;padding:60px;color:var(--txm)">
             <p style="font-size:16px;margin-bottom:8px">No trips logged yet</p>
@@ -73,10 +84,11 @@
                     <th>Formula</th>
                     <th>kgCO₂e</th>
                     <th>Methodology</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var trip in Model.OrderByDescending(t => t.TripDate))
+                @foreach (var trip in trips)
                 {
                     <tr>
                         <td style="color:var(--txm)">@trip.TripDate.ToString("dd MMM yyyy")</td>
@@ -91,6 +103,19 @@
                         <td class="mono">@trip.Formula</td>
                         <td class="co2">@trip.KgCO2e</td>
                         <td><span class="ok-badge">@trip.DistanceMethodology</span></td>
+                        <td>
+                            <form method="post" asp-action="Delete" asp-route-id="@trip.Id"
+                                  onsubmit="return confirm('Delete this trip: @trip.Origin → @trip.Destination?');"
+                                  style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        style="background:none;border:none;color:rgba(239,68,68,0.5);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:4px;transition:color .15s"
+                                        onmouseover="this.style.color='rgba(239,68,68,1)'"
+                                        onmouseout="this.style.color='rgba(239,68,68,0.5)'">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
                     </tr>
                 }
             </tbody>

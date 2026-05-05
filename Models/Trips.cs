@@ -21,6 +21,7 @@ namespace CarbonTrack.Models
 
         public string? TravelClass { get; set; }
 
+        [Range(1, 500, ErrorMessage = "Passengers must be between 1 and 500.")]
         public int Passengers { get; set; } = 1;
 
         public double DistanceKm { get; set; }
@@ -35,7 +36,7 @@ namespace CarbonTrack.Models
 
         public string? Formula { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public int OrganisationId { get; set; }
 
