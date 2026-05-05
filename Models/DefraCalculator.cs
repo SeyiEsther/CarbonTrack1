@@ -51,6 +51,8 @@ namespace CarbonTrack.Models
             return Math.Round(R * c, 2);
         }
 
+        private static double ToRad(double degrees) => degrees * Math.PI / 180;
+
         public static string GetDistanceMethodology(string? transportMode)
         {
             if (string.IsNullOrWhiteSpace(transportMode)) return "Unknown";
