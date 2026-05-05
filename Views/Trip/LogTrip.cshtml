@@ -1,4 +1,4 @@
-﻿@model CarbonTrack.Models.Trip
+@model CarbonTrack.Models.Trip
 
 @{
     ViewData["Title"] = "Log Trip";
@@ -36,16 +36,13 @@
     .map-header { padding: 12px 16px; border-bottom: 1px solid var(--bda); display: flex; justify-content: space-between; align-items: center; }
     .map-title { font-size: 13px; font-weight: 600; }
     .map-meta { font-size: 11px; color: var(--lv); }
-    .map-svg { width: 100%; background: #e8f0e8; display: block; }
+    #gmap { width: 100%; height: 300px; background: #1a2a1a; display: block; }
     .em-preview { display: flex; gap: 0; border-top: 1px solid var(--bda); }
     .em-stat { flex: 1; padding: 14px 16px; text-align: center; border-right: 1px solid var(--bda); }
     .em-stat:last-child { border-right: none; }
     .em-label { font-size: 10px; color: var(--lv); text-transform: uppercase; letter-spacing: 0.05em; }
     .em-value { font-size: 20px; font-weight: 600; margin-top: 3px; }
     .em-unit { font-size: 10px; color: var(--lv); }
-    .route-line { stroke: #1D9E75; stroke-width: 2; fill: none; stroke-dasharray: 6 3; animation: routedash 1s linear infinite; }
-    .route-line-return { stroke: #534AB7; stroke-width: 1.5; fill: none; stroke-dasharray: 4 4; animation: routedash 1s linear infinite reverse; }
-    @@keyframes routedash { to { stroke-dashoffset: -18; } }
 </style>
 
 <div class="mb-6">
@@ -73,7 +70,7 @@
                     </div>
                     <div class="fg">
                         <label>Number of passengers</label>
-                        <input type="number" asp-for="Passengers" id="passengers" min="1" value="1" required onchange="updatePreview()" />
+                        <input type="number" asp-for="Passengers" id="passengers" min="1" max="500" value="1" required onchange="updatePreview()" />
                     </div>
                     <div class="fg autocomplete-wrap">
                         <label>Origin</label>
@@ -200,10 +197,7 @@
                 <div class="map-title" id="map-title">Route map</div>
                 <div class="map-meta" id="map-meta">Enter origin and destination</div>
             </div>
-            <svg class="map-svg" id="map-svg" viewBox="0 0 400 320" style="height:300px">
-                <rect width="400" height="320" fill="#e8f0e8"/>
-                <text id="map-placeholder" x="200" y="160" text-anchor="middle" font-size="13" fill="#888" font-family="inherit">Enter origin and destination to see route</text>
-            </svg>
+            <div id="gmap"></div>
             <div class="em-preview" id="em-preview" style="display:none">
                 <div class="em-stat">
                     <div class="em-label">Outbound</div>
@@ -236,93 +230,194 @@
 
 <script>
     const CITIES = [
-        { name: 'London', code: 'LON', x: 160, y: 110, aliases: ['london', 'lon', 'lhr', 'ltn', 'lgw', 'gatwick', 'heathrow', 'stansted', 'luton'] },
-        { name: 'Edinburgh', code: 'EDI', x: 155, y: 60, aliases: ['edinburgh', 'edi'] },
-        { name: 'Manchester', code: 'MAN', x: 155, y: 83, aliases: ['manchester', 'man'] },
-        { name: 'Birmingham', code: 'BHX', x: 162, y: 97, aliases: ['birmingham', 'bhx'] },
-        { name: 'Glasgow', code: 'GLA', x: 148, y: 58, aliases: ['glasgow', 'gla'] },
-        { name: 'Bristol', code: 'BRS', x: 150, y: 115, aliases: ['bristol', 'brs'] },
-        { name: 'Leeds', code: 'LBA', x: 163, y: 80, aliases: ['leeds', 'lba'] },
-        { name: 'Newcastle', code: 'NCL', x: 164, y: 68, aliases: ['newcastle', 'ncl'] },
-        { name: 'Liverpool', code: 'LPL', x: 152, y: 85, aliases: ['liverpool', 'lpl'] },
-        { name: 'Cardiff', code: 'CWL', x: 148, y: 112, aliases: ['cardiff', 'cwl'] },
-        { name: 'Belfast', code: 'BFS', x: 138, y: 75, aliases: ['belfast', 'bfs', 'bhd'] },
-        { name: 'Aberdeen', code: 'ABZ', x: 155, y: 50, aliases: ['aberdeen', 'abz'] },
-        { name: 'Dublin', code: 'DUB', x: 128, y: 93, aliases: ['dublin', 'dub'] },
-        { name: 'Paris', code: 'CDG', x: 178, y: 128, aliases: ['paris', 'cdg', 'ory'] },
-        { name: 'Amsterdam', code: 'AMS', x: 188, y: 108, aliases: ['amsterdam', 'ams'] },
-        { name: 'Brussels', code: 'BRU', x: 183, y: 116, aliases: ['brussels', 'bru'] },
-        { name: 'Frankfurt', code: 'FRA', x: 200, y: 120, aliases: ['frankfurt', 'fra'] },
-        { name: 'Munich', code: 'MUC', x: 203, y: 128, aliases: ['munich', 'muc'] },
-        { name: 'Berlin', code: 'BER', x: 207, y: 105, aliases: ['berlin', 'ber', 'txl', 'sxf'] },
-        { name: 'Hamburg', code: 'HAM', x: 200, y: 98, aliases: ['hamburg', 'ham'] },
-        { name: 'Madrid', code: 'MAD', x: 155, y: 158, aliases: ['madrid', 'mad'] },
-        { name: 'Barcelona', code: 'BCN', x: 175, y: 152, aliases: ['barcelona', 'bcn'] },
-        { name: 'Lisbon', code: 'LIS', x: 138, y: 158, aliases: ['lisbon', 'lis'] },
-        { name: 'Rome', code: 'FCO', x: 205, y: 148, aliases: ['rome', 'fco'] },
-        { name: 'Milan', code: 'MXP', x: 196, y: 133, aliases: ['milan', 'mxp', 'linate'] },
-        { name: 'Zurich', code: 'ZRH', x: 196, y: 126, aliases: ['zurich', 'zrh'] },
-        { name: 'Vienna', code: 'VIE', x: 213, y: 120, aliases: ['vienna', 'vie'] },
-        { name: 'Warsaw', code: 'WAW', x: 222, y: 108, aliases: ['warsaw', 'waw'] },
-        { name: 'Prague', code: 'PRG', x: 210, y: 113, aliases: ['prague', 'prg'] },
-        { name: 'Copenhagen', code: 'CPH', x: 205, y: 85, aliases: ['copenhagen', 'cph'] },
-        { name: 'Stockholm', code: 'ARN', x: 215, y: 70, aliases: ['stockholm', 'arn'] },
-        { name: 'Oslo', code: 'OSL', x: 198, y: 72, aliases: ['oslo', 'osl'] },
-        { name: 'Helsinki', code: 'HEL', x: 228, y: 68, aliases: ['helsinki', 'hel'] },
-        { name: 'Athens', code: 'ATH', x: 220, y: 158, aliases: ['athens', 'ath'] },
-        { name: 'Istanbul', code: 'IST', x: 238, y: 148, aliases: ['istanbul', 'ist'] },
-        { name: 'New York', code: 'JFK', x: 60, y: 112, aliases: ['new york', 'jfk', 'ewr', 'lga', 'nyc'] },
-        { name: 'Los Angeles', code: 'LAX', x: 28, y: 128, aliases: ['los angeles', 'lax'] },
-        { name: 'Chicago', code: 'ORD', x: 72, y: 106, aliases: ['chicago', 'ord', 'mdw'] },
-        { name: 'Boston', code: 'BOS', x: 68, y: 108, aliases: ['boston', 'bos'] },
-        { name: 'Miami', code: 'MIA', x: 80, y: 135, aliases: ['miami', 'mia'] },
-        { name: 'Toronto', code: 'YYZ', x: 78, y: 100, aliases: ['toronto', 'yyz'] },
-        { name: 'Vancouver', code: 'YVR', x: 22, y: 95, aliases: ['vancouver', 'yvr'] },
-        { name: 'Mexico City', code: 'MEX', x: 65, y: 150, aliases: ['mexico city', 'mex'] },
-        { name: 'São Paulo', code: 'GRU', x: 95, y: 210, aliases: ['sao paulo', 'são paulo', 'gru'] },
-        { name: 'Dubai', code: 'DXB', x: 285, y: 152, aliases: ['dubai', 'dxb'] },
-        { name: 'Abu Dhabi', code: 'AUH', x: 283, y: 156, aliases: ['abu dhabi', 'auh'] },
-        { name: 'Doha', code: 'DOH', x: 278, y: 155, aliases: ['doha', 'doh'] },
-        { name: 'Riyadh', code: 'RUH', x: 272, y: 158, aliases: ['riyadh', 'ruh'] },
-        { name: 'Mumbai', code: 'BOM', x: 295, y: 163, aliases: ['mumbai', 'bom', 'bombay'] },
-        { name: 'Delhi', code: 'DEL', x: 300, y: 148, aliases: ['delhi', 'del', 'new delhi'] },
-        { name: 'Bangalore', code: 'BLR', x: 300, y: 170, aliases: ['bangalore', 'blr', 'bengaluru'] },
-        { name: 'Singapore', code: 'SIN', x: 340, y: 183, aliases: ['singapore', 'sin'] },
-        { name: 'Kuala Lumpur', code: 'KUL', x: 335, y: 178, aliases: ['kuala lumpur', 'kul'] },
-        { name: 'Bangkok', code: 'BKK', x: 328, y: 168, aliases: ['bangkok', 'bkk'] },
-        { name: 'Hong Kong', code: 'HKG', x: 345, y: 153, aliases: ['hong kong', 'hkg'] },
-        { name: 'Shanghai', code: 'PVG', x: 350, y: 138, aliases: ['shanghai', 'pvg'] },
-        { name: 'Beijing', code: 'PEK', x: 348, y: 128, aliases: ['beijing', 'pek', 'bjs'] },
-        { name: 'Tokyo', code: 'TYO', x: 363, y: 120, aliases: ['tokyo', 'tyo', 'nrt', 'hnd'] },
-        { name: 'Seoul', code: 'ICN', x: 358, y: 125, aliases: ['seoul', 'icn', 'gmp'] },
-        { name: 'Sydney', code: 'SYD', x: 368, y: 245, aliases: ['sydney', 'syd'] },
-        { name: 'Melbourne', code: 'MEL', x: 362, y: 252, aliases: ['melbourne', 'mel'] },
-        { name: 'Auckland', code: 'AKL', x: 390, y: 252, aliases: ['auckland', 'akl'] },
-        { name: 'Johannesburg', code: 'JNB', x: 235, y: 218, aliases: ['johannesburg', 'jnb'] },
-        { name: 'Cape Town', code: 'CPT', x: 222, y: 230, aliases: ['cape town', 'cpt'] },
-        { name: 'Nairobi', code: 'NBO', x: 252, y: 195, aliases: ['nairobi', 'nbo'] },
-        { name: 'Cairo', code: 'CAI', x: 245, y: 158, aliases: ['cairo', 'cai'] },
-        { name: 'Lagos', code: 'LOS', x: 195, y: 188, aliases: ['lagos', 'los'] },
+        { name: 'London',       code: 'LON', lat: 51.51,   lon: -0.13,   aliases: ['london','lon','lhr','ltn','lgw','gatwick','heathrow','stansted','luton'] },
+        { name: 'Edinburgh',    code: 'EDI', lat: 55.95,   lon: -3.19,   aliases: ['edinburgh','edi'] },
+        { name: 'Manchester',   code: 'MAN', lat: 53.48,   lon: -2.24,   aliases: ['manchester','man'] },
+        { name: 'Birmingham',   code: 'BHX', lat: 52.49,   lon: -1.89,   aliases: ['birmingham','bhx'] },
+        { name: 'Glasgow',      code: 'GLA', lat: 55.86,   lon: -4.25,   aliases: ['glasgow','gla'] },
+        { name: 'Bristol',      code: 'BRS', lat: 51.45,   lon: -2.59,   aliases: ['bristol','brs'] },
+        { name: 'Leeds',        code: 'LBA', lat: 53.80,   lon: -1.55,   aliases: ['leeds','lba'] },
+        { name: 'Newcastle',    code: 'NCL', lat: 54.98,   lon: -1.62,   aliases: ['newcastle','ncl'] },
+        { name: 'Liverpool',    code: 'LPL', lat: 53.41,   lon: -2.99,   aliases: ['liverpool','lpl'] },
+        { name: 'Cardiff',      code: 'CWL', lat: 51.48,   lon: -3.18,   aliases: ['cardiff','cwl'] },
+        { name: 'Belfast',      code: 'BFS', lat: 54.60,   lon: -5.93,   aliases: ['belfast','bfs','bhd'] },
+        { name: 'Aberdeen',     code: 'ABZ', lat: 57.15,   lon: -2.09,   aliases: ['aberdeen','abz'] },
+        { name: 'Dublin',       code: 'DUB', lat: 53.35,   lon: -6.26,   aliases: ['dublin','dub'] },
+        { name: 'Paris',        code: 'CDG', lat: 48.86,   lon: 2.35,    aliases: ['paris','cdg','ory'] },
+        { name: 'Amsterdam',    code: 'AMS', lat: 52.37,   lon: 4.90,    aliases: ['amsterdam','ams'] },
+        { name: 'Brussels',     code: 'BRU', lat: 50.85,   lon: 4.35,    aliases: ['brussels','bru'] },
+        { name: 'Frankfurt',    code: 'FRA', lat: 50.11,   lon: 8.68,    aliases: ['frankfurt','fra'] },
+        { name: 'Munich',       code: 'MUC', lat: 48.14,   lon: 11.58,   aliases: ['munich','muc'] },
+        { name: 'Berlin',       code: 'BER', lat: 52.52,   lon: 13.41,   aliases: ['berlin','ber','txl','sxf'] },
+        { name: 'Hamburg',      code: 'HAM', lat: 53.58,   lon: 10.02,   aliases: ['hamburg','ham'] },
+        { name: 'Madrid',       code: 'MAD', lat: 40.42,   lon: -3.70,   aliases: ['madrid','mad'] },
+        { name: 'Barcelona',    code: 'BCN', lat: 41.39,   lon: 2.17,    aliases: ['barcelona','bcn'] },
+        { name: 'Lisbon',       code: 'LIS', lat: 38.72,   lon: -9.14,   aliases: ['lisbon','lis'] },
+        { name: 'Rome',         code: 'FCO', lat: 41.90,   lon: 12.50,   aliases: ['rome','fco'] },
+        { name: 'Milan',        code: 'MXP', lat: 45.47,   lon: 9.19,    aliases: ['milan','mxp','linate'] },
+        { name: 'Zurich',       code: 'ZRH', lat: 47.38,   lon: 8.54,    aliases: ['zurich','zrh'] },
+        { name: 'Vienna',       code: 'VIE', lat: 48.21,   lon: 16.37,   aliases: ['vienna','vie'] },
+        { name: 'Warsaw',       code: 'WAW', lat: 52.23,   lon: 21.01,   aliases: ['warsaw','waw'] },
+        { name: 'Prague',       code: 'PRG', lat: 50.08,   lon: 14.44,   aliases: ['prague','prg'] },
+        { name: 'Copenhagen',   code: 'CPH', lat: 55.68,   lon: 12.57,   aliases: ['copenhagen','cph'] },
+        { name: 'Stockholm',    code: 'ARN', lat: 59.33,   lon: 18.07,   aliases: ['stockholm','arn'] },
+        { name: 'Oslo',         code: 'OSL', lat: 59.91,   lon: 10.75,   aliases: ['oslo','osl'] },
+        { name: 'Helsinki',     code: 'HEL', lat: 60.17,   lon: 24.94,   aliases: ['helsinki','hel'] },
+        { name: 'Athens',       code: 'ATH', lat: 37.98,   lon: 23.73,   aliases: ['athens','ath'] },
+        { name: 'Istanbul',     code: 'IST', lat: 41.01,   lon: 28.98,   aliases: ['istanbul','ist'] },
+        { name: 'New York',     code: 'JFK', lat: 40.71,   lon: -74.01,  aliases: ['new york','jfk','ewr','lga','nyc'] },
+        { name: 'Los Angeles',  code: 'LAX', lat: 34.05,   lon: -118.24, aliases: ['los angeles','lax'] },
+        { name: 'Chicago',      code: 'ORD', lat: 41.88,   lon: -87.63,  aliases: ['chicago','ord','mdw'] },
+        { name: 'Boston',       code: 'BOS', lat: 42.36,   lon: -71.06,  aliases: ['boston','bos'] },
+        { name: 'Miami',        code: 'MIA', lat: 25.76,   lon: -80.19,  aliases: ['miami','mia'] },
+        { name: 'Toronto',      code: 'YYZ', lat: 43.65,   lon: -79.38,  aliases: ['toronto','yyz'] },
+        { name: 'Vancouver',    code: 'YVR', lat: 49.28,   lon: -123.12, aliases: ['vancouver','yvr'] },
+        { name: 'Mexico City',  code: 'MEX', lat: 19.43,   lon: -99.13,  aliases: ['mexico city','mex'] },
+        { name: 'São Paulo',    code: 'GRU', lat: -23.55,  lon: -46.63,  aliases: ['sao paulo','são paulo','gru'] },
+        { name: 'Dubai',        code: 'DXB', lat: 25.20,   lon: 55.27,   aliases: ['dubai','dxb'] },
+        { name: 'Abu Dhabi',    code: 'AUH', lat: 24.45,   lon: 54.38,   aliases: ['abu dhabi','auh'] },
+        { name: 'Doha',         code: 'DOH', lat: 25.29,   lon: 51.53,   aliases: ['doha','doh'] },
+        { name: 'Riyadh',       code: 'RUH', lat: 24.71,   lon: 46.68,   aliases: ['riyadh','ruh'] },
+        { name: 'Mumbai',       code: 'BOM', lat: 19.08,   lon: 72.88,   aliases: ['mumbai','bom','bombay'] },
+        { name: 'Delhi',        code: 'DEL', lat: 28.70,   lon: 77.10,   aliases: ['delhi','del','new delhi'] },
+        { name: 'Bangalore',    code: 'BLR', lat: 12.97,   lon: 77.59,   aliases: ['bangalore','blr','bengaluru'] },
+        { name: 'Singapore',    code: 'SIN', lat: 1.35,    lon: 103.82,  aliases: ['singapore','sin'] },
+        { name: 'Kuala Lumpur', code: 'KUL', lat: 3.14,    lon: 101.69,  aliases: ['kuala lumpur','kul'] },
+        { name: 'Bangkok',      code: 'BKK', lat: 13.76,   lon: 100.50,  aliases: ['bangkok','bkk'] },
+        { name: 'Hong Kong',    code: 'HKG', lat: 22.32,   lon: 114.17,  aliases: ['hong kong','hkg'] },
+        { name: 'Shanghai',     code: 'PVG', lat: 31.23,   lon: 121.47,  aliases: ['shanghai','pvg'] },
+        { name: 'Beijing',      code: 'PEK', lat: 39.90,   lon: 116.41,  aliases: ['beijing','pek','bjs'] },
+        { name: 'Tokyo',        code: 'TYO', lat: 35.68,   lon: 139.65,  aliases: ['tokyo','tyo','nrt','hnd'] },
+        { name: 'Seoul',        code: 'ICN', lat: 37.57,   lon: 126.98,  aliases: ['seoul','icn','gmp'] },
+        { name: 'Sydney',       code: 'SYD', lat: -33.87,  lon: 151.21,  aliases: ['sydney','syd'] },
+        { name: 'Melbourne',    code: 'MEL', lat: -37.81,  lon: 144.96,  aliases: ['melbourne','mel'] },
+        { name: 'Auckland',     code: 'AKL', lat: -36.85,  lon: 174.76,  aliases: ['auckland','akl'] },
+        { name: 'Johannesburg', code: 'JNB', lat: -26.20,  lon: 28.05,   aliases: ['johannesburg','jnb'] },
+        { name: 'Cape Town',    code: 'CPT', lat: -33.92,  lon: 18.42,   aliases: ['cape town','cpt'] },
+        { name: 'Nairobi',      code: 'NBO', lat: -1.29,   lon: 36.82,   aliases: ['nairobi','nbo'] },
+        { name: 'Cairo',        code: 'CAI', lat: 30.04,   lon: 31.24,   aliases: ['cairo','cai'] },
+        { name: 'Lagos',        code: 'LOS', lat: 6.52,    lon: 3.38,    aliases: ['lagos','los'] },
     ];
 
     const EF = {
-        'Flight-Domestic': 0.255, 'Flight-ShortHaul-Economy': 0.156, 'Flight-ShortHaul-Business': 0.234,
-        'Flight-LongHaul-Economy': 0.148, 'Flight-LongHaul-Business': 0.429, 'Flight-LongHaul-First': 0.596,
-        'Train-National': 0.0139, 'Train-International': 0.0068,
-        'Car-Petrol': 0.170, 'Car-Diesel': 0.168, 'Car-Hybrid': 0.120, 'Car-Electric': 0.053, 'Taxi': 0.149,
-        'Ferry-Foot': 0.019, 'Ferry-Car': 0.130
+        'Flight-Domestic': 0.255133, 'Flight-ShortHaul-Economy': 0.153180, 'Flight-ShortHaul-Business': 0.229770,
+        'Flight-LongHaul-Economy': 0.147613, 'Flight-LongHaul-Business': 0.429234, 'Flight-LongHaul-First': 0.590454,
+        'Train-National': 0.035390, 'Train-International': 0.004130,
+        'Car-Petrol': 0.168330, 'Car-Diesel': 0.163050, 'Car-Hybrid': 0.106850, 'Car-Electric': 0.052690,
+        'Taxi': 0.149780, 'Ferry-Foot': 0.018820, 'Ferry-Car': 0.128860
     };
 
     let state = { origin: null, dest: null, retOrigin: null, retDest: null, isReturn: false, diffRoute: false };
+    let gmap = null, outLine = null, retLine = null, markers = [];
 
-    function haversineFromCoords(c1, c2) {
-        const toRad = d => d * Math.PI / 180;
-        const lat1 = 80 - (c1.y / 320) * 140, lon1 = (c1.x / 400) * 350 - 170;
-        const lat2 = 80 - (c2.y / 320) * 140, lon2 = (c2.x / 400) * 350 - 170;
-        const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-        return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    // --- Google Maps ---
+
+    const MAP_STYLES = [
+        { elementType: 'geometry',               stylers: [{ color: '#1a2a1a' }] },
+        { elementType: 'labels.text.stroke',     stylers: [{ color: '#0f1a0f' }] },
+        { elementType: 'labels.text.fill',       stylers: [{ color: '#5C7A5A' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d1a10' }] },
+        { featureType: 'road',                   stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi',                    stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit',                stylers: [{ visibility: 'off' }] },
+        { featureType: 'administrative',         elementType: 'labels', stylers: [{ visibility: 'off' }] },
+        { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#2a4a2a' }, { weight: 0.8 }] },
+        { featureType: 'landscape',              elementType: 'geometry', stylers: [{ color: '#1a2a1a' }] },
+    ];
+
+    function initGoogleMap() {
+        gmap = new google.maps.Map(document.getElementById('gmap'), {
+            center: { lat: 30, lng: 10 },
+            zoom: 2,
+            styles: MAP_STYLES,
+            disableDefaultUI: true,
+            zoomControl: true,
+            zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP },
+        });
     }
+
+    function clearMapOverlays() {
+        if (outLine)  { outLine.setMap(null);  outLine = null; }
+        if (retLine)  { retLine.setMap(null);  retLine = null; }
+        markers.forEach(m => m.setMap(null));
+        markers = [];
+    }
+
+    function addMarker(latLng, color) {
+        const m = new google.maps.Marker({
+            position: latLng,
+            map: gmap,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 7,
+                fillColor: color,
+                fillOpacity: 1,
+                strokeColor: '#0f1a0f',
+                strokeWeight: 2,
+            }
+        });
+        markers.push(m);
+    }
+
+    function drawMap() {
+        if (!state.origin || !state.dest || !gmap) return;
+
+        clearMapOverlays();
+
+        const o = { lat: state.origin.lat,  lng: state.origin.lon };
+        const d = { lat: state.dest.lat,    lng: state.dest.lon };
+
+        outLine = new google.maps.Polyline({
+            path: [o, d],
+            geodesic: true,
+            strokeColor: '#1D9E75',
+            strokeOpacity: 0.9,
+            strokeWeight: 2.5,
+            icons: [{ icon: { path: google.maps.SymbolPath.FORWARD_OPEN_ARROW, scale: 3, strokeColor: '#1D9E75' }, offset: '52%' }],
+            map: gmap,
+        });
+
+        addMarker(o, '#1D9E75');
+        addMarker(d, '#1D9E75');
+
+        if (state.isReturn) {
+            const ro = (state.diffRoute && state.retOrigin) ? { lat: state.retOrigin.lat, lng: state.retOrigin.lon } : d;
+            const rd = (state.diffRoute && state.retDest)   ? { lat: state.retDest.lat,   lng: state.retDest.lon }   : o;
+            retLine = new google.maps.Polyline({
+                path: [ro, rd],
+                geodesic: true,
+                strokeColor: '#C5B4E3',
+                strokeOpacity: 0,
+                strokeWeight: 0,
+                icons: [{
+                    icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.7, strokeColor: '#C5B4E3', scale: 3 },
+                    offset: '0', repeat: '12px'
+                }],
+                map: gmap,
+            });
+            if (state.diffRoute && state.retOrigin && state.retDest) {
+                addMarker(ro, '#C5B4E3');
+                addMarker(rd, '#C5B4E3');
+            }
+        }
+
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(o);
+        bounds.extend(d);
+        gmap.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+    }
+
+    // --- Haversine using real lat/lon ---
+
+    function haversine(c1, c2) {
+        const toRad = d => d * Math.PI / 180;
+        const R = 6371;
+        const dLat = toRad(c2.lat - c1.lat), dLon = toRad(c2.lon - c1.lon);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(c1.lat)) * Math.cos(toRad(c2.lat)) * Math.sin(dLon / 2) ** 2;
+        return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    // --- Autocomplete ---
 
     function search(q) {
         const lq = q.toLowerCase().trim();
@@ -347,10 +442,10 @@
         const city = CITIES.find(c => c.name === name);
         document.getElementById(field).value = name;
         document.getElementById('sug-' + field).style.display = 'none';
-        if (field === 'origin') state.origin = city;
-        else if (field === 'dest') state.dest = city;
+        if      (field === 'origin')     state.origin    = city;
+        else if (field === 'dest')       state.dest      = city;
         else if (field === 'ret-origin') state.retOrigin = city;
-        else if (field === 'ret-dest') state.retDest = city;
+        else if (field === 'ret-dest')   state.retDest   = city;
         updateReturnLabel();
         updatePreview();
     }
@@ -378,19 +473,25 @@
 
     function updatePreview() {
         if (!state.origin || !state.dest) return;
-        const dist = haversineFromCoords(state.origin, state.dest);
-        const ef = EF[document.getElementById('mode').value] || 0.255;
+        const dist = haversine(state.origin, state.dest);
+        const ef = EF[document.getElementById('mode').value] || 0.255133;
         const passengers = parseInt(document.getElementById('passengers').value) || 1;
         const outKg = Math.round(dist * ef * passengers);
+
         let retKg = 0, retDist = 0;
         if (state.isReturn) {
             if (state.diffRoute && state.retOrigin && state.retDest) {
-                retDist = haversineFromCoords(state.retOrigin, state.retDest);
-                retKg = Math.round(retDist * (EF[document.getElementById('ret-mode').value] || 0.255) * passengers);
-            } else { retDist = dist; retKg = outKg; }
+                retDist = haversine(state.retOrigin, state.retDest);
+                retKg = Math.round(retDist * (EF[document.getElementById('ret-mode').value] || 0.255133) * passengers);
+            } else {
+                retDist = dist;
+                retKg = outKg;
+            }
         }
+
         const totalKg = outKg + retKg;
         const totalDist = dist + (state.isReturn ? retDist : 0);
+
         document.getElementById('em-out').textContent = outKg;
         document.getElementById('em-ret').textContent = retKg;
         document.getElementById('em-total').textContent = totalKg;
@@ -398,53 +499,8 @@
         document.getElementById('em-preview').style.display = 'flex';
         document.getElementById('map-title').textContent = state.origin.name + ' → ' + state.dest.name;
         document.getElementById('map-meta').textContent = totalDist.toLocaleString() + ' km · ' + (totalKg / 1000).toFixed(2) + ' tCO₂e (estimate)';
-        drawMap();
-    }
 
-    function drawMap() {
-        if (!state.origin || !state.dest) return;
-        const svg = document.getElementById('map-svg');
-        const o = state.origin, d = state.dest;
-        const allPts = [o, d];
-        if (state.isReturn && state.diffRoute && state.retOrigin) allPts.push(state.retOrigin);
-        if (state.isReturn && state.diffRoute && state.retDest) allPts.push(state.retDest);
-        const xs = allPts.map(c => c.x), ys = allPts.map(c => c.y);
-        const pad = 40;
-        const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
-        const minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
-        const vw = Math.max(maxX - minX, 100), vh = Math.max(maxY - minY, 80);
-        svg.setAttribute('viewBox', minX + ' ' + minY + ' ' + vw + ' ' + vh);
-        const cx = (o.x + d.x) / 2, cy = (o.y + d.y) / 2;
-        const dx = d.x - o.x, dy = d.y - o.y;
-        const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const curve = len * 0.22;
-        const cpx = cx - (dy / len) * curve, cpy = cy + (dx / len) * curve;
-        const fs = Math.max(4, Math.min(6, vw / 18));
-        let html = '<rect x="' + minX + '" y="' + minY + '" width="' + vw + '" height="' + vh + '" fill="#e8f0e8"/>';
-        html += '<path class="route-line" d="M' + o.x + ',' + o.y + ' Q' + cpx + ',' + cpy + ' ' + d.x + ',' + d.y + '"/>';
-        if (state.isReturn) {
-            let ro = d, rd = o;
-            if (state.diffRoute && state.retOrigin && state.retDest) { ro = state.retOrigin; rd = state.retDest; }
-            const rcx = (ro.x + rd.x) / 2, rcy = (ro.y + rd.y) / 2;
-            const rdx = rd.x - ro.x, rdy = rd.y - ro.y;
-            const rlen = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
-            const rc = rlen * 0.22;
-            const rcpx = rcx - (rdy / rlen) * rc - 3, rcpy = rcy + (rdx / rlen) * rc - 3;
-            html += '<path class="route-line-return" d="M' + ro.x + ',' + ro.y + ' Q' + rcpx + ',' + rcpy + ' ' + rd.x + ',' + rd.y + '"/>';
-            if (state.diffRoute && state.retOrigin && state.retDest) {
-                html += '<circle cx="' + ro.x + '" cy="' + ro.y + '" r="3.5" fill="#534AB7"/>';
-                html += '<circle cx="' + rd.x + '" cy="' + rd.y + '" r="3.5" fill="#534AB7"/>';
-                html += '<text x="' + ro.x + '" y="' + (ro.y - 6) + '" text-anchor="middle" font-size="' + fs + '" fill="#534AB7" font-family="inherit">' + ro.name + '</text>';
-                html += '<text x="' + rd.x + '" y="' + (rd.y - 6) + '" text-anchor="middle" font-size="' + fs + '" fill="#534AB7" font-family="inherit">' + rd.name + '</text>';
-            }
-        }
-        html += '<circle cx="' + o.x + '" cy="' + o.y + '" r="4" fill="#1D9E75"/>';
-        html += '<circle cx="' + d.x + '" cy="' + d.y + '" r="4" fill="#1D9E75"/>';
-        const oAnchor = o.x <= cx ? 'start' : 'end';
-        const dAnchor = d.x >= cx ? 'end' : 'start';
-        html += '<text x="' + (o.x + (oAnchor === 'start' ? 7 : -7)) + '" y="' + (o.y + 1) + '" text-anchor="' + oAnchor + '" dominant-baseline="middle" font-size="' + fs + '" fill="#0F6E56" font-weight="600" font-family="inherit">' + o.name + '</text>';
-        html += '<text x="' + (d.x + (dAnchor === 'end' ? -7 : 7)) + '" y="' + (d.y + 1) + '" text-anchor="' + dAnchor + '" dominant-baseline="middle" font-size="' + fs + '" fill="#0F6E56" font-weight="600" font-family="inherit">' + d.name + '</text>';
-        svg.innerHTML = html;
+        drawMap();
     }
 
     function showLoading() {
@@ -455,4 +511,8 @@
         if (!e.target.closest('.autocomplete-wrap'))
             document.querySelectorAll('.suggestions').forEach(s => s.style.display = 'none');
     });
+</script>
+
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=@ViewBag.GoogleMapsApiKey&callback=initGoogleMap">
 </script>
