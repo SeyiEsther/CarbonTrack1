@@ -1,0 +1,145 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_Layout";
+}
+
+<div class="mb-6" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Scope 3 Category 6 & 7 — current reporting period</p>
+    </div>
+    <a href="/Trip/LogTrip" class="btn-primary">+ Log trip</a>
+</div>
+
+<!-- HERO -->
+<div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:28px 32px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden" class="mb-6">
+    <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(ellipse,rgba(197,180,227,0.06) 0%,transparent 70%)"></div>
+    <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--txm);margin-bottom:8px">Total Scope 3 Category 6 & 7</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:56px;color:var(--tx);line-height:1;margin-bottom:4px">@ViewBag.TotalTCO2e</div>
+        <div style="font-size:13px;color:var(--txm)">tCO₂e · current period</div>
+    </div>
+    <div style="display:flex;gap:32px">
+        <div style="text-align:right">
+            <div style="font-size:10px;color:var(--txm);margin-bottom:4px">Business travel</div>
+            <div style="font-size:20px;font-weight:500;color:var(--lv)">@ViewBag.FlightEmissions t</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:10px;color:var(--txm);margin-bottom:4px">Trips logged</div>
+            <div style="font-size:20px;font-weight:500;color:var(--lv)">@ViewBag.TotalTrips</div>
+        </div>
+    </div>
+</div>
+
+<!-- STATS -->
+<div class="grid-3 mb-6">
+    <div class="stat-card">
+        <div class="stat-label">Trips processed</div>
+        <div class="stat-val">@ViewBag.TotalTrips</div>
+        <div class="stat-sub">business journeys</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:70%;background:var(--sc)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Audit coverage</div>
+        <div class="stat-val">100%</div>
+        <div class="stat-sub">all trips have formula trail</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:100%;background:var(--lv)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">DEFRA version</div>
+        <div class="stat-val">2025</div>
+        <div class="stat-sub">factors current</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:100%;background:var(--sc)"></div></div>
+    </div>
+</div>
+
+<!-- CHART + COMPLIANCE -->
+<div style="display:grid;grid-template-columns:1fr 220px;gap:16px;margin-bottom:20px">
+    <div class="card card-p">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div>
+                <div class="section-title" style="margin:0">Monthly emissions</div>
+                <div style="font-size:11px;color:var(--txm);margin-top:2px">tCO₂e by transport mode</div>
+            </div>
+            <div style="display:flex;gap:12px">
+                <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--txm)"><div style="width:7px;height:7px;border-radius:2px;background:var(--sc)"></div>Flights</div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--txm)"><div style="width:7px;height:7px;border-radius:2px;background:var(--lv)"></div>Rail</div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--txm)"><div style="width:7px;height:7px;border-radius:2px;background:rgba(255,255,255,0.2)"></div>Car</div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:90px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:10px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:38px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Apr</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:3px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:8px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:25px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">May</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:6px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:13px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:50px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Jun</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:3px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:7px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:20px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Jul</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:5px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:10px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:35px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Aug</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:7px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:15px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:58px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Sep</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:9px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:30px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Oct</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:5px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:12px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:44px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Nov</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:3px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:7px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:23px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Dec</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:10px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:37px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Jan</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:9px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:33px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Feb</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:78px;gap:1px"><div style="height:6px;background:rgba(255,255,255,0.15);border-radius:2px 2px 0 0"></div><div style="height:14px;background:var(--lv);border-radius:2px 2px 0 0"></div><div style="height:54px;background:var(--sc);border-radius:2px 2px 0 0"></div></div><span style="font-size:9px;color:var(--txm)">Mar</span></div>
+        </div>
+    </div>
+
+    <div class="card card-p">
+        <div class="section-title mb-4">Compliance</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--tx)">DEFRA factors</span><span class="ok-badge">2025 ✓</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--tx)">Flights</span><span class="lv-badge">Haversine ✓</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--tx)">Road & rail</span><span class="lv-badge">Maps API ✓</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--tx)">SECR</span><span class="ok-badge">Aligned ✓</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--tx)">PPN 06/21</span><span class="ok-badge">Ready ✓</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0"><span style="font-size:12px;color:var(--tx)">Audit trail</span><span class="ok-badge">100% ✓</span></div>
+    </div>
+</div>
+
+<!-- RECENT TRIPS -->
+<div class="card">
+    <div class="card-p" style="border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
+        <span class="section-title" style="margin:0">Recent trips</span>
+        <a href="/Trip" style="font-size:11px;color:var(--lv);font-weight:600;text-decoration:none">View all →</a>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Route</th>
+                <th>Mode</th>
+                <th>Distance</th>
+                <th>Formula</th>
+                <th>kgCO₂e</th>
+                <th>Audit</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (ViewBag.RecentTrips != null)
+            {
+                foreach (var trip in ViewBag.RecentTrips)
+                {
+                    <tr>
+                        <td style="color:var(--txm)">@trip.TripDate.ToString("dd MMM yyyy")</td>
+                        <td><b>@trip.Origin → @trip.Destination</b></td>
+                        <td>
+                            <span class="tag @(trip.TransportMode.StartsWith("Flight") ? "tag-flight" : trip.TransportMode.StartsWith("Train") ? "tag-train" : "tag-car")">
+                                @trip.TransportMode
+                            </span>
+                        </td>
+                        <td class="mono">@trip.DistanceKm km</td>
+                        <td class="mono">@trip.Formula</td>
+                        <td class="co2">@trip.KgCO2e</td>
+                        <td><span class="ok-badge">✓ 2025</span></td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="7" style="text-align:center;padding:40px;color:var(--txm)">
+                        No trips logged yet — <a href="/Trip/LogTrip" style="color:var(--lv)">log your first trip</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

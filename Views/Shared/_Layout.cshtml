@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@ViewData["Title"] — CarbonTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1a0f;
+  --bg2:#1a2a1a;
+  --bg3:#1f321f;
+  --sc:#5C7A5A;
+  --scd:#3d5c3b;
+  --scl:rgba(92,122,90,0.15);
+  --lv:#C5B4E3;
+  --lvd:#9b86d4;
+  --lvl:rgba(197,180,227,0.12);
+  --tx:#ffffff;
+  --txm:rgba(255,255,255,0.5);
+  --txs:rgba(255,255,255,0.25);
+  --bd:rgba(255,255,255,0.07);
+  --bda:rgba(197,180,227,0.2);
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx)}
+.app{display:flex;flex-direction:column;min-height:100vh}
+
+/* TOPNAV */
+.nav{background:var(--bg2);border-bottom:1px solid var(--bd);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:56px;flex-shrink:0;position:sticky;top:0;z-index:100}
+.nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
+.nav-dot{width:7px;height:7px;background:var(--lv);border-radius:50%;animation:pulse 2s infinite}
+@@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+.nav-name{font-family:'DM Serif Display',serif;font-size:18px;color:var(--tx)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-link{padding:7px 14px;border-radius:7px;font-size:13px;color:var(--txm);text-decoration:none;transition:all .15s;border:none;background:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.nav-link:hover{background:var(--scl);color:var(--tx)}
+.nav-link.active{background:var(--scl);color:var(--tx);font-weight:500}
+.nav-right{display:flex;align-items:center;gap:10px}
+.defra-pill{display:flex;align-items:center;gap:5px;background:var(--lvl);border:1px solid var(--bda);color:var(--lv);border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600}
+.defra-dot{width:5px;height:5px;background:var(--lv);border-radius:50%}
+.btn-primary{background:var(--sc);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;text-decoration:none;display:inline-block}
+.btn-primary:hover{background:var(--scd)}
+.user-av{width:30px;height:30px;background:var(--sc);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:pointer}
+
+/* PAGE */
+.page{flex:1;padding:28px 32px;max-width:1200px;margin:0 auto;width:100%}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px}
+.card-p{padding:22px 24px}
+
+/* STATS */
+.stat-card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:20px 22px}
+.stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txm);margin-bottom:8px}
+.stat-val{font-size:26px;font-weight:600;color:var(--tx);line-height:1;margin-bottom:4px}
+.stat-sub{font-size:11px;color:var(--txs)}
+.stat-bar{height:2px;background:var(--bd);border-radius:1px;margin-top:14px;overflow:hidden}
+.stat-fill{height:100%;border-radius:1px}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:10px 16px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txs);background:rgba(255,255,255,0.03);border-bottom:1px solid var(--bd)}
+td{padding:11px 16px;border-bottom:1px solid var(--bd);color:var(--tx);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.03)}
+
+/* TAGS */
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700}
+.tag-flight{background:var(--lvl);color:var(--lv)}
+.tag-train{background:var(--scl);color:#8aac87}
+.tag-car{background:rgba(108,109,17,0.15);color:#a3a833}
+.co2{font-weight:700;color:var(--lv)}
+.mono{font-family:monospace;font-size:10px;color:var(--txs)}
+.ok-badge{background:var(--scl);color:#8aac87;border-radius:3px;padding:2px 6px;font-size:9px;font-weight:700}
+.lv-badge{background:var(--lvl);color:var(--lv);border-radius:3px;padding:2px 6px;font-size:9px;font-weight:700}
+
+/* FORM */
+.form-card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:28px}
+.fg{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+.fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txm)}
+.fg input,.fg select{background:var(--bg3);border:1px solid var(--bd);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--tx);outline:none;font-family:'DM Sans',sans-serif;transition:all .15s}
+.fg input:focus,.fg select:focus{border-color:var(--lv);box-shadow:0 0 0 3px rgba(197,180,227,0.1)}
+.fg input::placeholder{color:var(--txs)}
+.fg select option{background:var(--bg2);color:var(--tx)}
+.btn-submit{background:var(--sc);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:500;cursor:pointer;width:100%;font-family:'DM Sans',sans-serif;transition:all .15s;margin-top:4px}
+.btn-submit:hover{background:var(--scd)}
+.btn-back{background:transparent;color:var(--txm);border:1px solid var(--bd);border-radius:8px;padding:12px 24px;font-size:14px;cursor:pointer;width:100%;font-family:'DM Sans',sans-serif;margin-top:8px;transition:all .15s;text-align:center;display:block;text-decoration:none}
+.btn-back:hover{border-color:var(--sc);color:var(--tx)}
+
+/* MISC */
+.page-title{font-family:'DM Serif Display',serif;font-size:clamp(24px,3vw,36px);color:var(--tx);margin-bottom:4px}
+.page-sub{font-size:14px;color:var(--txm);margin-bottom:24px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.mb-4{margin-bottom:16px}
+.mb-6{margin-bottom:24px}
+.info-box{background:var(--lvl);border:1px solid var(--bda);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--lv);line-height:1.6;margin-bottom:20px}
+.info-box strong{color:var(--tx);font-weight:600}
+.section-title{font-size:13px;font-weight:600;color:var(--tx);margin-bottom:14px}
+.divider{border:none;border-top:1px solid var(--bd);margin:20px 0}
+
+@@media(max-width:768px){
+  .nav{padding:0 16px}
+  .nav-links{display:none}
+  .page{padding:16px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="nav">
+    <a href="/Dashboard" class="nav-logo">
+      <div class="nav-dot"></div>
+      <span class="nav-name">CarbonTrack</span>
+    </a>
+    <div class="nav-links">
+      <a href="/Dashboard" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")">Dashboard</a>
+      <a href="/Trip/LogTrip" class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "LogTrip" ? "active" : "")">Log Trip</a>
+      <a href="/Trip" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Trip" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">Trip Log</a>
+      <a href="#" class="nav-link">Reports</a>
+      <a href="#" class="nav-link">Clients</a>
+    </div>
+    <div class="nav-right">
+      <div class="defra-pill"><div class="defra-dot"></div>DEFRA 2025</div>
+      <a href="/Trip/LogTrip" class="btn-primary">+ Log trip</a>
+      <div class="user-av">SO</div>
+    </div>
+  </nav>
+  <div class="page">
+    @RenderBody()
+  </div>
+</div>
+</body>
+</html>

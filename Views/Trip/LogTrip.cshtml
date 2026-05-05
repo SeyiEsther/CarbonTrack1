@@ -1,0 +1,458 @@
+﻿@model CarbonTrack.Models.Trip
+
+@{
+    ViewData["Title"] = "Log Trip";
+    Layout = "_Layout";
+}
+
+@if (ViewBag.Error != null)
+{
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-bottom:20px;color:#fca5a5;font-size:13px;">
+        <strong>Error:</strong> @ViewBag.Error
+    </div>
+}
+
+<style>
+    .log-layout { display: flex; gap: 24px; align-items: flex-start; }
+    .log-form-col { flex: 0 0 480px; }
+    .log-map-col { flex: 1; position: sticky; top: 24px; }
+    .return-toggle { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--lvl); border: 1px solid var(--bda); border-radius: 8px; margin-bottom: 14px; cursor: pointer; user-select: none; }
+    .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: var(--bda); position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle-track.on { background: #1D9E75; }
+    .toggle-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .toggle-track.on .toggle-thumb { left: 18px; }
+    .toggle-label { font-size: 13px; font-weight: 600; }
+    .toggle-sub { font-size: 11px; color: var(--lv); margin-top: 1px; }
+    .return-section { border-top: 1px solid var(--bda); margin-top: 14px; padding-top: 14px; }
+    .return-leg-label { font-size: 11px; color: var(--lv); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .return-leg-label::before { content: '↩'; font-size: 13px; }
+    .diff-route-btn { font-size: 12px; color: #1D9E75; cursor: pointer; text-decoration: underline; background: none; border: none; padding: 0; margin-bottom: 12px; }
+    .autocomplete-wrap { position: relative; }
+    .suggestions { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg); border: 1px solid var(--bda); border-radius: 8px; z-index: 200; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.12); margin-top: 2px; }
+    .suggestion { padding: 9px 12px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .suggestion:hover { background: var(--lvl); }
+    .sug-code { font-size: 11px; color: var(--lv); font-family: monospace; }
+    .map-card { background: var(--bg); border: 1px solid var(--bda); border-radius: 12px; overflow: hidden; }
+    .map-header { padding: 12px 16px; border-bottom: 1px solid var(--bda); display: flex; justify-content: space-between; align-items: center; }
+    .map-title { font-size: 13px; font-weight: 600; }
+    .map-meta { font-size: 11px; color: var(--lv); }
+    .map-svg { width: 100%; background: #e8f0e8; display: block; }
+    .em-preview { display: flex; gap: 0; border-top: 1px solid var(--bda); }
+    .em-stat { flex: 1; padding: 14px 16px; text-align: center; border-right: 1px solid var(--bda); }
+    .em-stat:last-child { border-right: none; }
+    .em-label { font-size: 10px; color: var(--lv); text-transform: uppercase; letter-spacing: 0.05em; }
+    .em-value { font-size: 20px; font-weight: 600; margin-top: 3px; }
+    .em-unit { font-size: 10px; color: var(--lv); }
+    .route-line { stroke: #1D9E75; stroke-width: 2; fill: none; stroke-dasharray: 6 3; animation: routedash 1s linear infinite; }
+    .route-line-return { stroke: #534AB7; stroke-width: 1.5; fill: none; stroke-dasharray: 4 4; animation: routedash 1s linear infinite reverse; }
+    @@keyframes routedash { to { stroke-dashoffset: -18; } }
+</style>
+
+<div class="mb-6">
+    <h1 class="page-title">Log a trip</h1>
+    <p class="page-sub">DEFRA 2025 factors and distances calculated automatically.</p>
+</div>
+
+<div class="log-layout">
+
+    <div class="log-form-col">
+        <div class="info-box">
+            <strong>How distances are calculated:</strong><br>
+            Flights use the <strong>Haversine Great Circle formula</strong> — the only DEFRA-compliant method for air travel.
+            Road and rail use the <strong>Google Maps Distance Matrix API</strong> for actual route distances.
+        </div>
+
+        <div class="form-card">
+            <form method="post" asp-action="LogTrip" onsubmit="showLoading()">
+                @Html.AntiForgeryToken()
+
+                <div class="grid-2">
+                    <div class="fg">
+                        <label>Date of travel</label>
+                        <input type="date" asp-for="TripDate" required />
+                    </div>
+                    <div class="fg">
+                        <label>Number of passengers</label>
+                        <input type="number" asp-for="Passengers" id="passengers" min="1" value="1" required onchange="updatePreview()" />
+                    </div>
+                    <div class="fg autocomplete-wrap">
+                        <label>Origin</label>
+                        <input type="text" asp-for="Origin" id="origin" placeholder="e.g. London or LHR" required autocomplete="off" oninput="handleInput('origin')" />
+                        <div class="suggestions" id="sug-origin" style="display:none"></div>
+                    </div>
+                    <div class="fg autocomplete-wrap">
+                        <label>Destination</label>
+                        <input type="text" asp-for="Destination" id="dest" placeholder="e.g. Edinburgh or EDI" required autocomplete="off" oninput="handleInput('dest')" />
+                        <div class="suggestions" id="sug-dest" style="display:none"></div>
+                    </div>
+                    <div class="fg">
+                        <label>Transport mode</label>
+                        <select asp-for="TransportMode" id="mode" required onchange="updatePreview()">
+                            <optgroup label="Flights">
+                                <option value="Flight-Domestic">Flight — Domestic</option>
+                                <option value="Flight-ShortHaul-Economy">Flight — Short Haul Economy</option>
+                                <option value="Flight-ShortHaul-Business">Flight — Short Haul Business</option>
+                                <option value="Flight-LongHaul-Economy">Flight — Long Haul Economy</option>
+                                <option value="Flight-LongHaul-Business">Flight — Long Haul Business</option>
+                                <option value="Flight-LongHaul-First">Flight — Long Haul First</option>
+                            </optgroup>
+                            <optgroup label="Rail">
+                                <option value="Train-National">Train — National Rail</option>
+                                <option value="Train-International">Train — International</option>
+                            </optgroup>
+                            <optgroup label="Road">
+                                <option value="Car-Petrol">Car — Average Petrol</option>
+                                <option value="Car-Diesel">Car — Average Diesel</option>
+                                <option value="Car-Hybrid">Car — Average Hybrid</option>
+                                <option value="Car-Electric">Car — Average Electric</option>
+                                <option value="Taxi">Taxi</option>
+                            </optgroup>
+                            <optgroup label="Ferry">
+                                <option value="Ferry-Foot">Ferry — Foot Passenger</option>
+                                <option value="Ferry-Car">Ferry — Car Passenger</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="fg">
+                        <label>Notes (optional)</label>
+                        <input type="text" asp-for="TravelClass" placeholder="e.g. client visit, conference" />
+                    </div>
+                </div>
+
+                <!-- Return trip toggle -->
+                <div class="return-toggle" onclick="toggleReturn()">
+                    <div id="ret-track" class="toggle-track"><div class="toggle-thumb"></div></div>
+                    <div>
+                        <div class="toggle-label">Return trip</div>
+                        <div class="toggle-sub">Include the journey back</div>
+                    </div>
+                </div>
+
+                <!-- Return leg (hidden until toggled) -->
+                <div id="return-section" style="display:none">
+                    <div class="return-section">
+                        <div class="return-leg-label">Return leg</div>
+                        <button type="button" class="diff-route-btn" id="diff-btn" onclick="toggleDiffRoute()">Use a different route back</button>
+
+                        <div id="diff-route" style="display:none">
+                            <div class="grid-2">
+                                <div class="fg autocomplete-wrap">
+                                    <label>Return origin</label>
+                                    <input type="text" id="ret-origin" placeholder="e.g. Edinburgh or EDI" autocomplete="off" oninput="handleInput('ret-origin')" />
+                                    <div class="suggestions" id="sug-ret-origin" style="display:none"></div>
+                                </div>
+                                <div class="fg autocomplete-wrap">
+                                    <label>Return destination</label>
+                                    <input type="text" id="ret-dest" placeholder="e.g. London or LHR" autocomplete="off" oninput="handleInput('ret-dest')" />
+                                    <div class="suggestions" id="sug-ret-dest" style="display:none"></div>
+                                </div>
+                            </div>
+                            <div class="fg">
+                                <label>Return transport mode</label>
+                                <select id="ret-mode" onchange="updatePreview()">
+                                    <optgroup label="Flights">
+                                        <option value="Flight-Domestic">Flight — Domestic</option>
+                                        <option value="Flight-ShortHaul-Economy">Flight — Short Haul Economy</option>
+                                        <option value="Flight-ShortHaul-Business">Flight — Short Haul Business</option>
+                                        <option value="Flight-LongHaul-Economy">Flight — Long Haul Economy</option>
+                                        <option value="Flight-LongHaul-Business">Flight — Long Haul Business</option>
+                                        <option value="Flight-LongHaul-First">Flight — Long Haul First</option>
+                                    </optgroup>
+                                    <optgroup label="Rail">
+                                        <option value="Train-National">Train — National Rail</option>
+                                        <option value="Train-International">Train — International</option>
+                                    </optgroup>
+                                    <optgroup label="Road">
+                                        <option value="Car-Petrol">Car — Average Petrol</option>
+                                        <option value="Car-Diesel">Car — Average Diesel</option>
+                                        <option value="Car-Hybrid">Car — Average Hybrid</option>
+                                        <option value="Car-Electric">Car — Average Electric</option>
+                                        <option value="Taxi">Taxi</option>
+                                    </optgroup>
+                                    <optgroup label="Ferry">
+                                        <option value="Ferry-Foot">Ferry — Foot Passenger</option>
+                                        <option value="Ferry-Car">Ferry — Car Passenger</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="same-route-note" style="font-size:12px;color:var(--lv);padding:4px 0">
+                            Same route reversed — <span id="ret-route-label">–</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="loading" style="display:none;background:var(--lvl);border:1px solid var(--bda);border-radius:8px;padding:14px;text-align:center;font-size:13px;color:var(--lv);margin-bottom:12px">
+                    Calculating distance and DEFRA 2025 emissions...
+                </div>
+
+                <button type="submit" class="btn-submit">Calculate & save trip →</button>
+                <a href="/Trip" class="btn-back">← Back to trip log</a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Map column -->
+    <div class="log-map-col">
+        <div class="map-card">
+            <div class="map-header">
+                <div class="map-title" id="map-title">Route map</div>
+                <div class="map-meta" id="map-meta">Enter origin and destination</div>
+            </div>
+            <svg class="map-svg" id="map-svg" viewBox="0 0 400 320" style="height:300px">
+                <rect width="400" height="320" fill="#e8f0e8"/>
+                <text id="map-placeholder" x="200" y="160" text-anchor="middle" font-size="13" fill="#888" font-family="inherit">Enter origin and destination to see route</text>
+            </svg>
+            <div class="em-preview" id="em-preview" style="display:none">
+                <div class="em-stat">
+                    <div class="em-label">Outbound</div>
+                    <div class="em-value" id="em-out">–</div>
+                    <div class="em-unit">kgCO₂e</div>
+                </div>
+                <div class="em-stat" id="em-ret-col" style="display:none">
+                    <div class="em-label">Return</div>
+                    <div class="em-value" id="em-ret">–</div>
+                    <div class="em-unit">kgCO₂e</div>
+                </div>
+                <div class="em-stat">
+                    <div class="em-label">Total</div>
+                    <div class="em-value" id="em-total" style="color:#1D9E75">–</div>
+                    <div class="em-unit">kgCO₂e</div>
+                </div>
+                <div class="em-stat">
+                    <div class="em-label">Distance</div>
+                    <div class="em-value" id="em-dist">–</div>
+                    <div class="em-unit">km</div>
+                </div>
+            </div>
+        </div>
+        <p style="font-size:11px;color:var(--lv);margin-top:8px;padding:0 4px">
+            * Emissions shown are estimates for reference. Final figures are calculated server-side using DEFRA 2025 factors and precise distances.
+        </p>
+    </div>
+
+</div>
+
+<script>
+    const CITIES = [
+        { name: 'London', code: 'LON', x: 160, y: 110, aliases: ['london', 'lon', 'lhr', 'ltn', 'lgw', 'gatwick', 'heathrow', 'stansted', 'luton'] },
+        { name: 'Edinburgh', code: 'EDI', x: 155, y: 60, aliases: ['edinburgh', 'edi'] },
+        { name: 'Manchester', code: 'MAN', x: 155, y: 83, aliases: ['manchester', 'man'] },
+        { name: 'Birmingham', code: 'BHX', x: 162, y: 97, aliases: ['birmingham', 'bhx'] },
+        { name: 'Glasgow', code: 'GLA', x: 148, y: 58, aliases: ['glasgow', 'gla'] },
+        { name: 'Bristol', code: 'BRS', x: 150, y: 115, aliases: ['bristol', 'brs'] },
+        { name: 'Leeds', code: 'LBA', x: 163, y: 80, aliases: ['leeds', 'lba'] },
+        { name: 'Newcastle', code: 'NCL', x: 164, y: 68, aliases: ['newcastle', 'ncl'] },
+        { name: 'Liverpool', code: 'LPL', x: 152, y: 85, aliases: ['liverpool', 'lpl'] },
+        { name: 'Cardiff', code: 'CWL', x: 148, y: 112, aliases: ['cardiff', 'cwl'] },
+        { name: 'Belfast', code: 'BFS', x: 138, y: 75, aliases: ['belfast', 'bfs', 'bhd'] },
+        { name: 'Aberdeen', code: 'ABZ', x: 155, y: 50, aliases: ['aberdeen', 'abz'] },
+        { name: 'Dublin', code: 'DUB', x: 128, y: 93, aliases: ['dublin', 'dub'] },
+        { name: 'Paris', code: 'CDG', x: 178, y: 128, aliases: ['paris', 'cdg', 'ory'] },
+        { name: 'Amsterdam', code: 'AMS', x: 188, y: 108, aliases: ['amsterdam', 'ams'] },
+        { name: 'Brussels', code: 'BRU', x: 183, y: 116, aliases: ['brussels', 'bru'] },
+        { name: 'Frankfurt', code: 'FRA', x: 200, y: 120, aliases: ['frankfurt', 'fra'] },
+        { name: 'Munich', code: 'MUC', x: 203, y: 128, aliases: ['munich', 'muc'] },
+        { name: 'Berlin', code: 'BER', x: 207, y: 105, aliases: ['berlin', 'ber', 'txl', 'sxf'] },
+        { name: 'Hamburg', code: 'HAM', x: 200, y: 98, aliases: ['hamburg', 'ham'] },
+        { name: 'Madrid', code: 'MAD', x: 155, y: 158, aliases: ['madrid', 'mad'] },
+        { name: 'Barcelona', code: 'BCN', x: 175, y: 152, aliases: ['barcelona', 'bcn'] },
+        { name: 'Lisbon', code: 'LIS', x: 138, y: 158, aliases: ['lisbon', 'lis'] },
+        { name: 'Rome', code: 'FCO', x: 205, y: 148, aliases: ['rome', 'fco'] },
+        { name: 'Milan', code: 'MXP', x: 196, y: 133, aliases: ['milan', 'mxp', 'linate'] },
+        { name: 'Zurich', code: 'ZRH', x: 196, y: 126, aliases: ['zurich', 'zrh'] },
+        { name: 'Vienna', code: 'VIE', x: 213, y: 120, aliases: ['vienna', 'vie'] },
+        { name: 'Warsaw', code: 'WAW', x: 222, y: 108, aliases: ['warsaw', 'waw'] },
+        { name: 'Prague', code: 'PRG', x: 210, y: 113, aliases: ['prague', 'prg'] },
+        { name: 'Copenhagen', code: 'CPH', x: 205, y: 85, aliases: ['copenhagen', 'cph'] },
+        { name: 'Stockholm', code: 'ARN', x: 215, y: 70, aliases: ['stockholm', 'arn'] },
+        { name: 'Oslo', code: 'OSL', x: 198, y: 72, aliases: ['oslo', 'osl'] },
+        { name: 'Helsinki', code: 'HEL', x: 228, y: 68, aliases: ['helsinki', 'hel'] },
+        { name: 'Athens', code: 'ATH', x: 220, y: 158, aliases: ['athens', 'ath'] },
+        { name: 'Istanbul', code: 'IST', x: 238, y: 148, aliases: ['istanbul', 'ist'] },
+        { name: 'New York', code: 'JFK', x: 60, y: 112, aliases: ['new york', 'jfk', 'ewr', 'lga', 'nyc'] },
+        { name: 'Los Angeles', code: 'LAX', x: 28, y: 128, aliases: ['los angeles', 'lax'] },
+        { name: 'Chicago', code: 'ORD', x: 72, y: 106, aliases: ['chicago', 'ord', 'mdw'] },
+        { name: 'Boston', code: 'BOS', x: 68, y: 108, aliases: ['boston', 'bos'] },
+        { name: 'Miami', code: 'MIA', x: 80, y: 135, aliases: ['miami', 'mia'] },
+        { name: 'Toronto', code: 'YYZ', x: 78, y: 100, aliases: ['toronto', 'yyz'] },
+        { name: 'Vancouver', code: 'YVR', x: 22, y: 95, aliases: ['vancouver', 'yvr'] },
+        { name: 'Mexico City', code: 'MEX', x: 65, y: 150, aliases: ['mexico city', 'mex'] },
+        { name: 'São Paulo', code: 'GRU', x: 95, y: 210, aliases: ['sao paulo', 'são paulo', 'gru'] },
+        { name: 'Dubai', code: 'DXB', x: 285, y: 152, aliases: ['dubai', 'dxb'] },
+        { name: 'Abu Dhabi', code: 'AUH', x: 283, y: 156, aliases: ['abu dhabi', 'auh'] },
+        { name: 'Doha', code: 'DOH', x: 278, y: 155, aliases: ['doha', 'doh'] },
+        { name: 'Riyadh', code: 'RUH', x: 272, y: 158, aliases: ['riyadh', 'ruh'] },
+        { name: 'Mumbai', code: 'BOM', x: 295, y: 163, aliases: ['mumbai', 'bom', 'bombay'] },
+        { name: 'Delhi', code: 'DEL', x: 300, y: 148, aliases: ['delhi', 'del', 'new delhi'] },
+        { name: 'Bangalore', code: 'BLR', x: 300, y: 170, aliases: ['bangalore', 'blr', 'bengaluru'] },
+        { name: 'Singapore', code: 'SIN', x: 340, y: 183, aliases: ['singapore', 'sin'] },
+        { name: 'Kuala Lumpur', code: 'KUL', x: 335, y: 178, aliases: ['kuala lumpur', 'kul'] },
+        { name: 'Bangkok', code: 'BKK', x: 328, y: 168, aliases: ['bangkok', 'bkk'] },
+        { name: 'Hong Kong', code: 'HKG', x: 345, y: 153, aliases: ['hong kong', 'hkg'] },
+        { name: 'Shanghai', code: 'PVG', x: 350, y: 138, aliases: ['shanghai', 'pvg'] },
+        { name: 'Beijing', code: 'PEK', x: 348, y: 128, aliases: ['beijing', 'pek', 'bjs'] },
+        { name: 'Tokyo', code: 'TYO', x: 363, y: 120, aliases: ['tokyo', 'tyo', 'nrt', 'hnd'] },
+        { name: 'Seoul', code: 'ICN', x: 358, y: 125, aliases: ['seoul', 'icn', 'gmp'] },
+        { name: 'Sydney', code: 'SYD', x: 368, y: 245, aliases: ['sydney', 'syd'] },
+        { name: 'Melbourne', code: 'MEL', x: 362, y: 252, aliases: ['melbourne', 'mel'] },
+        { name: 'Auckland', code: 'AKL', x: 390, y: 252, aliases: ['auckland', 'akl'] },
+        { name: 'Johannesburg', code: 'JNB', x: 235, y: 218, aliases: ['johannesburg', 'jnb'] },
+        { name: 'Cape Town', code: 'CPT', x: 222, y: 230, aliases: ['cape town', 'cpt'] },
+        { name: 'Nairobi', code: 'NBO', x: 252, y: 195, aliases: ['nairobi', 'nbo'] },
+        { name: 'Cairo', code: 'CAI', x: 245, y: 158, aliases: ['cairo', 'cai'] },
+        { name: 'Lagos', code: 'LOS', x: 195, y: 188, aliases: ['lagos', 'los'] },
+    ];
+
+    const EF = {
+        'Flight-Domestic': 0.255, 'Flight-ShortHaul-Economy': 0.156, 'Flight-ShortHaul-Business': 0.234,
+        'Flight-LongHaul-Economy': 0.148, 'Flight-LongHaul-Business': 0.429, 'Flight-LongHaul-First': 0.596,
+        'Train-National': 0.0139, 'Train-International': 0.0068,
+        'Car-Petrol': 0.170, 'Car-Diesel': 0.168, 'Car-Hybrid': 0.120, 'Car-Electric': 0.053, 'Taxi': 0.149,
+        'Ferry-Foot': 0.019, 'Ferry-Car': 0.130
+    };
+
+    let state = { origin: null, dest: null, retOrigin: null, retDest: null, isReturn: false, diffRoute: false };
+
+    function haversineFromCoords(c1, c2) {
+        const toRad = d => d * Math.PI / 180;
+        const lat1 = 80 - (c1.y / 320) * 140, lon1 = (c1.x / 400) * 350 - 170;
+        const lat2 = 80 - (c2.y / 320) * 140, lon2 = (c2.x / 400) * 350 - 170;
+        const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+        return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    function search(q) {
+        const lq = q.toLowerCase().trim();
+        if (lq.length < 2) return [];
+        return CITIES.filter(c => c.aliases.some(a => a.startsWith(lq)) || c.name.toLowerCase().includes(lq)).slice(0, 6);
+    }
+
+    function handleInput(field) {
+        const el = document.getElementById(field);
+        const sugEl = document.getElementById('sug-' + field);
+        const results = search(el.value);
+        if (!results.length || !el.value) { sugEl.style.display = 'none'; return; }
+        sugEl.innerHTML = results.map(c =>
+            `<div class="suggestion" onclick="selectCity('${field}','${c.name.replace(/'/g, "\\'")}')">
+                <span>${c.name}</span><span class="sug-code">${c.code}</span>
+             </div>`
+        ).join('');
+        sugEl.style.display = 'block';
+    }
+
+    function selectCity(field, name) {
+        const city = CITIES.find(c => c.name === name);
+        document.getElementById(field).value = name;
+        document.getElementById('sug-' + field).style.display = 'none';
+        if (field === 'origin') state.origin = city;
+        else if (field === 'dest') state.dest = city;
+        else if (field === 'ret-origin') state.retOrigin = city;
+        else if (field === 'ret-dest') state.retDest = city;
+        updateReturnLabel();
+        updatePreview();
+    }
+
+    function updateReturnLabel() {
+        if (state.dest && state.origin)
+            document.getElementById('ret-route-label').textContent = state.dest.name + ' → ' + state.origin.name;
+    }
+
+    function toggleReturn() {
+        state.isReturn = !state.isReturn;
+        document.getElementById('ret-track').className = 'toggle-track' + (state.isReturn ? ' on' : '');
+        document.getElementById('return-section').style.display = state.isReturn ? 'block' : 'none';
+        document.getElementById('em-ret-col').style.display = state.isReturn ? '' : 'none';
+        updatePreview();
+    }
+
+    function toggleDiffRoute() {
+        state.diffRoute = !state.diffRoute;
+        document.getElementById('diff-route').style.display = state.diffRoute ? 'block' : 'none';
+        document.getElementById('same-route-note').style.display = state.diffRoute ? 'none' : 'block';
+        document.getElementById('diff-btn').textContent = state.diffRoute ? 'Use same route back' : 'Use a different route back';
+        updatePreview();
+    }
+
+    function updatePreview() {
+        if (!state.origin || !state.dest) return;
+        const dist = haversineFromCoords(state.origin, state.dest);
+        const ef = EF[document.getElementById('mode').value] || 0.255;
+        const passengers = parseInt(document.getElementById('passengers').value) || 1;
+        const outKg = Math.round(dist * ef * passengers);
+        let retKg = 0, retDist = 0;
+        if (state.isReturn) {
+            if (state.diffRoute && state.retOrigin && state.retDest) {
+                retDist = haversineFromCoords(state.retOrigin, state.retDest);
+                retKg = Math.round(retDist * (EF[document.getElementById('ret-mode').value] || 0.255) * passengers);
+            } else { retDist = dist; retKg = outKg; }
+        }
+        const totalKg = outKg + retKg;
+        const totalDist = dist + (state.isReturn ? retDist : 0);
+        document.getElementById('em-out').textContent = outKg;
+        document.getElementById('em-ret').textContent = retKg;
+        document.getElementById('em-total').textContent = totalKg;
+        document.getElementById('em-dist').textContent = totalDist.toLocaleString();
+        document.getElementById('em-preview').style.display = 'flex';
+        document.getElementById('map-title').textContent = state.origin.name + ' → ' + state.dest.name;
+        document.getElementById('map-meta').textContent = totalDist.toLocaleString() + ' km · ' + (totalKg / 1000).toFixed(2) + ' tCO₂e (estimate)';
+        drawMap();
+    }
+
+    function drawMap() {
+        if (!state.origin || !state.dest) return;
+        const svg = document.getElementById('map-svg');
+        const o = state.origin, d = state.dest;
+        const allPts = [o, d];
+        if (state.isReturn && state.diffRoute && state.retOrigin) allPts.push(state.retOrigin);
+        if (state.isReturn && state.diffRoute && state.retDest) allPts.push(state.retDest);
+        const xs = allPts.map(c => c.x), ys = allPts.map(c => c.y);
+        const pad = 40;
+        const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
+        const minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
+        const vw = Math.max(maxX - minX, 100), vh = Math.max(maxY - minY, 80);
+        svg.setAttribute('viewBox', minX + ' ' + minY + ' ' + vw + ' ' + vh);
+        const cx = (o.x + d.x) / 2, cy = (o.y + d.y) / 2;
+        const dx = d.x - o.x, dy = d.y - o.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const curve = len * 0.22;
+        const cpx = cx - (dy / len) * curve, cpy = cy + (dx / len) * curve;
+        const fs = Math.max(4, Math.min(6, vw / 18));
+        let html = '<rect x="' + minX + '" y="' + minY + '" width="' + vw + '" height="' + vh + '" fill="#e8f0e8"/>';
+        html += '<path class="route-line" d="M' + o.x + ',' + o.y + ' Q' + cpx + ',' + cpy + ' ' + d.x + ',' + d.y + '"/>';
+        if (state.isReturn) {
+            let ro = d, rd = o;
+            if (state.diffRoute && state.retOrigin && state.retDest) { ro = state.retOrigin; rd = state.retDest; }
+            const rcx = (ro.x + rd.x) / 2, rcy = (ro.y + rd.y) / 2;
+            const rdx = rd.x - ro.x, rdy = rd.y - ro.y;
+            const rlen = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
+            const rc = rlen * 0.22;
+            const rcpx = rcx - (rdy / rlen) * rc - 3, rcpy = rcy + (rdx / rlen) * rc - 3;
+            html += '<path class="route-line-return" d="M' + ro.x + ',' + ro.y + ' Q' + rcpx + ',' + rcpy + ' ' + rd.x + ',' + rd.y + '"/>';
+            if (state.diffRoute && state.retOrigin && state.retDest) {
+                html += '<circle cx="' + ro.x + '" cy="' + ro.y + '" r="3.5" fill="#534AB7"/>';
+                html += '<circle cx="' + rd.x + '" cy="' + rd.y + '" r="3.5" fill="#534AB7"/>';
+                html += '<text x="' + ro.x + '" y="' + (ro.y - 6) + '" text-anchor="middle" font-size="' + fs + '" fill="#534AB7" font-family="inherit">' + ro.name + '</text>';
+                html += '<text x="' + rd.x + '" y="' + (rd.y - 6) + '" text-anchor="middle" font-size="' + fs + '" fill="#534AB7" font-family="inherit">' + rd.name + '</text>';
+            }
+        }
+        html += '<circle cx="' + o.x + '" cy="' + o.y + '" r="4" fill="#1D9E75"/>';
+        html += '<circle cx="' + d.x + '" cy="' + d.y + '" r="4" fill="#1D9E75"/>';
+        const oAnchor = o.x <= cx ? 'start' : 'end';
+        const dAnchor = d.x >= cx ? 'end' : 'start';
+        html += '<text x="' + (o.x + (oAnchor === 'start' ? 7 : -7)) + '" y="' + (o.y + 1) + '" text-anchor="' + oAnchor + '" dominant-baseline="middle" font-size="' + fs + '" fill="#0F6E56" font-weight="600" font-family="inherit">' + o.name + '</text>';
+        html += '<text x="' + (d.x + (dAnchor === 'end' ? -7 : 7)) + '" y="' + (d.y + 1) + '" text-anchor="' + dAnchor + '" dominant-baseline="middle" font-size="' + fs + '" fill="#0F6E56" font-weight="600" font-family="inherit">' + d.name + '</text>';
+        svg.innerHTML = html;
+    }
+
+    function showLoading() {
+        document.getElementById('loading').style.display = 'block';
+    }
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.autocomplete-wrap'))
+            document.querySelectorAll('.suggestions').forEach(s => s.style.display = 'none');
+    });
+</script>

@@ -1,0 +1,99 @@
+﻿@model IEnumerable<CarbonTrack.Models.Trip>
+
+@{
+    ViewData["Title"] = "Trip Log";
+    Layout = "_Layout";
+}
+
+@{
+    var totalCo2 = Model.Sum(t => t.KgCO2e) / 1000;
+    var totalTrips = Model.Count();
+    var flightCo2 = Model.Where(t => t.TransportMode.StartsWith("Flight")).Sum(t => t.KgCO2e) / 1000;
+}
+
+<div class="mb-6" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+        <h1 class="page-title">Trip Log</h1>
+        <p class="page-sub">All journeys — full DEFRA 2025 audit trail</p>
+    </div>
+    <a href="/Trip/LogTrip" class="btn-primary">+ Log trip</a>
+</div>
+
+<div class="grid-4 mb-6">
+    <div class="stat-card">
+        <div class="stat-label">Total emissions</div>
+        <div class="stat-val">@Math.Round(totalCo2, 2)</div>
+        <div class="stat-sub">tCO₂e</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:70%;background:var(--lv)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total trips</div>
+        <div class="stat-val">@totalTrips</div>
+        <div class="stat-sub">journeys logged</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:60%;background:var(--sc)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Flight emissions</div>
+        <div class="stat-val">@Math.Round(flightCo2, 2)</div>
+        <div class="stat-sub">tCO₂e</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:50%;background:var(--lv)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">DEFRA version</div>
+        <div class="stat-val">2025</div>
+        <div class="stat-sub">factors current</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:100%;background:var(--sc)"></div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-p" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);padding-bottom:16px;margin-bottom:0">
+        <span class="section-title" style="margin:0">All trips — audit trail</span>
+        <span class="lv-badge">DEFRA 2025 ✓</span>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div style="text-align:center;padding:60px;color:var(--txm)">
+            <p style="font-size:16px;margin-bottom:8px">No trips logged yet</p>
+            <p style="font-size:13px;margin-bottom:20px">Log your first trip to get started</p>
+            <a href="/Trip/LogTrip" class="btn-primary">Log first trip</a>
+        </div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Route</th>
+                    <th>Mode</th>
+                    <th>Distance (km)</th>
+                    <th>EF (DEFRA 2025)</th>
+                    <th>Formula</th>
+                    <th>kgCO₂e</th>
+                    <th>Methodology</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var trip in Model.OrderByDescending(t => t.TripDate))
+                {
+                    <tr>
+                        <td style="color:var(--txm)">@trip.TripDate.ToString("dd MMM yyyy")</td>
+                        <td><strong>@trip.Origin → @trip.Destination</strong></td>
+                        <td>
+                            <span class="tag @(trip.TransportMode.StartsWith("Flight") ? "tag-flight" : trip.TransportMode.StartsWith("Train") ? "tag-train" : "tag-car")">
+                                @trip.TransportMode
+                            </span>
+                        </td>
+                        <td class="mono">@trip.DistanceKm</td>
+                        <td class="mono">@trip.EmissionFactor</td>
+                        <td class="mono">@trip.Formula</td>
+                        <td class="co2">@trip.KgCO2e</td>
+                        <td><span class="ok-badge">@trip.DistanceMethodology</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
