@@ -20,6 +20,11 @@ namespace CarbonTrack.Controllers
             if (TempData["Success"] is string success) ViewBag.Success = success;
             if (TempData["Error"] is string tempError) ViewBag.Error = tempError;
 
+            // Load org profile for personalised dashboard
+            var org = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1);
+            ViewBag.Org = org;
+            ViewBag.ShowOnboarding = org != null && !org.OnboardingComplete;
+
             try
             {
                 var trips = await _context.Trips.ToListAsync();
@@ -55,6 +60,17 @@ namespace CarbonTrack.Controllers
                     .ToList();
 
                 ViewBag.MonthlyData = System.Text.Json.JsonSerializer.Serialize(monthly);
+
+                // Intensity metrics (if org has employee/turnover data)
+                if (org?.Employees > 0 && trips.Any())
+                    ViewBag.IntensityPerEmployee = Math.Round(trips.Sum(t => t.KgCO2e) / 1000 / org.Employees.Value, 4);
+                if (org?.TurnoverGBPm > 0 && trips.Any())
+                    ViewBag.IntensityPerMGBP = Math.Round(trips.Sum(t => t.KgCO2e) / 1000 / (double)org.TurnoverGBPm.Value, 4);
+
+                // Gas breakdown totals (for DESNZ-uploaded trips)
+                ViewBag.TotalKgCO2 = Math.Round(trips.Sum(t => t.KgCO2 ?? 0), 2);
+                ViewBag.TotalKgCH4 = Math.Round(trips.Sum(t => t.KgCH4 ?? 0), 4);
+                ViewBag.TotalKgN2O = Math.Round(trips.Sum(t => t.KgN2O ?? 0), 4);
             }
             catch (Exception ex)
             {

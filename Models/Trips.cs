@@ -30,6 +30,11 @@ namespace CarbonTrack.Models
 
         public double KgCO2e { get; set; }
 
+        // Gas-component breakdown (populated for DESNZ-scheme uploads; null for manually-logged trips)
+        public double? KgCO2  { get; set; }
+        public double? KgCH4  { get; set; }
+        public double? KgN2O  { get; set; }
+
         public string? DistanceMethodology { get; set; }
 
         public string DefraFactorYear { get; set; } = "DEFRA 2025";

@@ -1,0 +1,207 @@
+@{
+    ViewData["Title"] = "Compliance Frameworks";
+    Layout = "_Layout";
+    var org       = ViewBag.Org as CarbonTrack.Models.Organisation;
+    var tripCount = (int)(ViewBag.TripCount ?? 0);
+    var totalT    = (double)(ViewBag.TotalTCO2e ?? 0.0);
+    bool hasData  = tripCount > 0;
+}
+
+<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap">
+    <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <div style="width:3px;height:32px;background:var(--lv);border-radius:2px"></div>
+            <h1 class="page-title" style="margin:0">Compliance Frameworks</h1>
+        </div>
+        <p style="font-size:13px;color:var(--txm);margin-left:13px">
+            Your data is structured for all six UK and international reporting standards below.
+            @(hasData ? $"{tripCount} trips · {totalT} tCO₂e ready for export." : "Log trips to populate your compliance data.")
+        </p>
+    </div>
+    <div style="display:flex;gap:8px">
+        <a href="/Reports/ExportExcel" class="btn-primary" style="white-space:nowrap">↓ Export data</a>
+        <a href="/Onboarding" style="background:transparent;border:1px solid var(--bd);border-radius:8px;padding:8px 14px;color:var(--txm);font-size:12px;text-decoration:none;white-space:nowrap">Edit profile</a>
+    </div>
+</div>
+
+@{
+    bool secrSelected = (bool)(ViewBag.HasSecr  ?? false);
+    bool ppnSelected  = (bool)(ViewBag.HasPpn   ?? false);
+    bool tcfdSelected = (bool)(ViewBag.HasTcfd  ?? false);
+    bool ghgSelected  = (bool)(ViewBag.HasGhg   ?? false);
+    bool esosSelected = (bool)(ViewBag.HasEsos  ?? false);
+    bool csrdSelected = (bool)(ViewBag.HasCsrd  ?? false);
+
+    var frameworks = new[]
+    {
+        new {
+            Id       = "SECR",
+            Badge    = "Mandatory UK",
+            Label    = "SECR",
+            Full     = "Streamlined Energy and Carbon Reporting",
+            Color    = "#5C7A5A",
+            Bg       = "rgba(92,122,90,0.12)",
+            Border   = "rgba(92,122,90,0.3)",
+            Selected = secrSelected,
+            Pill     = "DEFRA 2025",
+            Status   = hasData ? "Data ready" : "Awaiting data",
+            Items    = new[]
+            {
+                "Category 6 business travel data structured for SECR",
+                "Category 7 commuting data included",
+                "Report export formatted for Directors' Report inclusion",
+                "Year-on-year comparison built in",
+                "Intensity metric calculations supported",
+            },
+            Note = "Mandatory for UK quoted companies, large unquoted companies and LLPs meeting the size threshold. Scope 3 travel data must be included in the Directors' Report.",
+        },
+        new {
+            Id       = "PPN0621",
+            Badge    = "Government Tenders",
+            Label    = "PPN 06/21",
+            Full     = "Procurement Policy Note 06/21",
+            Color    = "#8b6fba",
+            Bg       = "rgba(197,180,227,0.12)",
+            Border   = "rgba(197,180,227,0.25)",
+            Selected = ppnSelected,
+            Pill     = "CRP Ready",
+            Status   = hasData ? "CRP data ready" : "Awaiting data",
+            Items    = new[]
+            {
+                "Category 6 data structured for Carbon Reduction Plans",
+                "CRP template pre-populated with your data",
+                "Audit trail satisfies government assessor requirements",
+                "Baseline year and reduction trajectory supported",
+                "Multi-site aggregation for complex organisations",
+            },
+            Note = "Mandatory Carbon Reduction Plans required for UK government contracts above £5 million. Scope 3 Category 6 travel data is a required component.",
+        },
+        new {
+            Id       = "GHGProtocol",
+            Badge    = "International Standard",
+            Label    = "GHG Protocol Scope 3",
+            Full     = "GHG Protocol Corporate Standard",
+            Color    = "#5C7A5A",
+            Bg       = "rgba(92,122,90,0.08)",
+            Border   = "rgba(92,122,90,0.2)",
+            Selected = ghgSelected,
+            Pill     = "Cat 6 & 7",
+            Status   = hasData ? "Aligned" : "Awaiting data",
+            Items    = new[]
+            {
+                "Category 6 business travel — fully aligned",
+                "Category 7 employee commuting — fully aligned",
+                "GHG Protocol distance methodology followed",
+                "Boundary and attribution methodology documented",
+                "Suitable for third-party assurance",
+            },
+            Note = "The international standard for corporate Scope 3 emissions accounting. CarbonTrack covers Category 6 (Business Travel) and Category 7 (Employee Commuting).",
+        },
+        new {
+            Id       = "TCFD",
+            Badge    = "Climate Disclosure",
+            Label    = "TCFD",
+            Full     = "Task Force on Climate-related Financial Disclosures",
+            Color    = "#b87333",
+            Bg       = "rgba(184,115,51,0.10)",
+            Border   = "rgba(184,115,51,0.25)",
+            Selected = tcfdSelected,
+            Pill     = "UK Listed",
+            Status   = hasData ? "Data ready" : "Awaiting data",
+            Items    = new[]
+            {
+                "Travel emissions data ready for TCFD disclosures",
+                "Year-on-year trend data for trajectory reporting",
+                "Methodology notes suitable for TCFD documentation",
+                "Integration with broader Scope 1, 2 data possible",
+            },
+            Note = "Mandatory for UK-listed companies and large asset managers. Scope 3 travel emissions are a key input to climate-related risk and opportunity reporting.",
+        },
+        new {
+            Id       = "ESOS",
+            Badge    = "ESG Reporting",
+            Label    = "ESOS",
+            Full     = "Energy Savings Opportunity Scheme",
+            Color    = "#4a7a8a",
+            Bg       = "rgba(74,122,138,0.10)",
+            Border   = "rgba(74,122,138,0.25)",
+            Selected = esosSelected,
+            Pill     = "Phase 3",
+            Status   = hasData ? "Cat 6 & 7 ready" : "Awaiting data",
+            Items    = new[]
+            {
+                "ESOS Phase 3 — Category 6 and 7 data structured",
+                "Energy-equivalent data available on request",
+                "GRI-aligned reporting structure",
+                "Raw data export for any ESG platform ingestion",
+            },
+            Note = "Energy Savings Opportunity Scheme (UK). Both ESOS and CSRD require Scope 3 travel data for qualifying organisations.",
+        },
+        new {
+            Id       = "CSRD",
+            Badge    = "EU Directive",
+            Label    = "CSRD",
+            Full     = "Corporate Sustainability Reporting Directive",
+            Color    = "#4a5a8a",
+            Bg       = "rgba(74,90,138,0.10)",
+            Border   = "rgba(74,90,138,0.25)",
+            Selected = csrdSelected,
+            Pill     = "EU",
+            Status   = "Pro tier roadmap",
+            Items    = new[]
+            {
+                "CSRD-formatted export on Pro tier roadmap",
+                "GRI-aligned reporting structure now",
+                "Raw data export for any ESG platform",
+                "ESRS E1 climate disclosure data structured",
+            },
+            Note = "Corporate Sustainability Reporting Directive (EU). Affects EU-operating organisations from 2025 onwards. CarbonTrack exports in formats suitable for CSRD filing.",
+        },
+    };
+}
+
+<div style="display:flex;flex-direction:column;gap:16px">
+    @foreach (var fw in frameworks)
+    {
+        <div style="background:var(--bg2);border:1px solid @(fw.Selected ? fw.Border : "var(--bd)");border-radius:14px;overflow:hidden;transition:border-color .2s;@(fw.Selected ? $"box-shadow:0 0 0 1px {fw.Border}" : "")">
+            <div style="padding:20px 24px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+                <div style="display:flex;align-items:flex-start;gap:14px">
+                    <div style="flex-shrink:0;margin-top:2px">
+                        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:@fw.Color;margin-bottom:3px">@fw.Badge</div>
+                        <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--tx);line-height:1">@fw.Label</div>
+                        <div style="font-size:11px;color:var(--txm);margin-top:2px">@fw.Full</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+                    <span style="background:@fw.Bg;border:1px solid @fw.Border;color:@fw.Color;border-radius:20px;padding:4px 10px;font-size:10px;font-weight:600">@fw.Pill</span>
+                    @if (fw.Selected)
+                    {
+                        <span style="background:rgba(92,122,90,0.15);border:1px solid rgba(92,122,90,0.3);color:#8aac87;border-radius:20px;padding:4px 10px;font-size:10px;font-weight:600">✓ Selected</span>
+                    }
+                    <span style="background:var(--bg3);border:1px solid var(--bd);color:var(--txm);border-radius:20px;padding:4px 10px;font-size:10px">@fw.Status</span>
+                </div>
+            </div>
+            <div style="padding:18px 24px;display:grid;grid-template-columns:2fr 1fr;gap:20px">
+                <div>
+                    <div style="font-size:11px;color:var(--txm);margin-bottom:10px">@fw.Note</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px">
+                        @foreach (var item in fw.Items)
+                        {
+                            <li style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--tx)">
+                                <span style="color:@fw.Color;margin-top:1px;flex-shrink:0">✓</span>@item
+                            </li>
+                        }
+                    </ul>
+                </div>
+                <div style="border-left:1px solid var(--bd);padding-left:20px;display:flex;flex-direction:column;justify-content:center;gap:10px">
+                    <a href="/Reports" style="display:block;text-align:center;background:var(--bg3);border:1px solid var(--bd);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--txm);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='@fw.Color'" onmouseout="this.style.borderColor='var(--bd)'">View report →</a>
+                    <a href="/Reports/ExportExcel" style="display:block;text-align:center;background:var(--bg3);border:1px solid var(--bd);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--txm);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='@fw.Color'" onmouseout="this.style.borderColor='var(--bd)'">↓ Excel export</a>
+                    @if (!fw.Selected)
+                    {
+                        <a href="/Onboarding" style="display:block;text-align:center;background:var(--bg3);border:1px dashed var(--bd);border-radius:8px;padding:9px 14px;font-size:11px;color:var(--txs);text-decoration:none">Enable in profile</a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>

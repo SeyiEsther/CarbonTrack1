@@ -1,36 +1,48 @@
 namespace CarbonTrack.Models
 {
     /// <summary>
-    /// Multi-year DEFRA/BEIS GHG Conversion Factor tables for Business Travel (Table 5).
-    /// Factors in kgCO2e per passenger-kilometre, AR5 GWP100 basis.
-    /// Sources:
-    ///   2024: DEFRA/BEIS "Greenhouse Gas Reporting: Conversion Factors 2024" v1.0
-    ///   2025: DEFRA/BEIS "Greenhouse Gas Reporting: Conversion Factors 2025/26" v1.0
+    /// Holds DESNZ/DEFRA WTW (Well-to-Wheel = TTW + WTT) emission factor tables.
+    ///
+    /// DESNZ 2024 WTW factors (used for uploads):
+    ///   Source: DESNZ "Greenhouse Gas Conversion Factors for Company Reporting 2024"
+    ///   Table: Business Travel — TTW + WTT combined, AR5 GWP100 basis.
+    ///
+    /// DEFRA 2025 factors (used for manually-logged trips):
+    ///   Source: DEFRA/BEIS "GHG Conversion Factors 2025/26" v1.0
+    ///
+    /// Key distinction:
+    ///   • Cars (Average Car): unit is vehicle-km  → kgCO2e = distance × EF         (no passenger multiplier)
+    ///   • All other modes:    unit is passenger-km → kgCO2e = distance × EF × pax   (passenger multiplier applied)
     /// </summary>
     public static class DefraFactorTables
     {
-        // ── Combustion (direct) emission factors ─────────────────────────────
+        // ── DESNZ 2024 WTW factor record ──────────────────────────────────────
+        // Total = WTW total kgCO2e/unit
+        // CO2 / CH4 / N2O = TTW component breakdown (combustion only)
+        // IsVehicleKm = true → no passenger multiplier (car); false → multiply by passengers
+        public record WtwFactor(double Total, double CO2, double CH4, double N2O, bool IsVehicleKm);
 
-        public static readonly IReadOnlyDictionary<string, double> Factors2024 = new Dictionary<string, double>
+        /// <summary>
+        /// DESNZ 2024 WTW factors — use these for bulk uploads.
+        /// Keys match CT TransportMode codes.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, WtwFactor> Desnz2024 =
+            new Dictionary<string, WtwFactor>
         {
-            { "Flight-Domestic",            0.24503 },
-            { "Flight-ShortHaul-Economy",   0.15302 },
-            { "Flight-ShortHaul-Business",  0.22953 },
-            { "Flight-LongHaul-Economy",    0.14778 },
-            { "Flight-LongHaul-Business",   0.42965 },
-            { "Flight-LongHaul-First",      0.59147 },
-            { "Train-National",             0.03549 },
-            { "Train-International",        0.00601 },
-            { "Car-Petrol",                 0.17008 },
-            { "Car-Diesel",                 0.16387 },
-            { "Car-Hybrid",                 0.11672 },
-            { "Car-Electric",               0.05349 },
-            { "Taxi",                       0.14914 },
-            { "Ferry-Foot",                 0.01868 },
-            { "Ferry-Car",                  0.12964 },
+            // Flights — passenger.km  (multiply by passengers)
+            { "Flight-Domestic",          new(0.30607, 0.27101, 0.00022, 0.00134, false) },
+            { "Flight-ShortHaul-Economy", new(0.20878, 0.18499, 0.00001, 0.00092, false) },
+            { "Flight-LongHaul-Economy",  new(0.29341, 0.25998, 0.00001, 0.00129, false) },
+            // Car — vehicle km  (do NOT multiply by passengers; car burns same fuel regardless of occupancy)
+            { "Car-Average",              new(0.21090, 0.16574, 0.00019, 0.00098, true)  },
+            // Rail — passenger.km
+            { "Train-National",           new(0.04443, 0.03510, 0.00008, 0.00028, false) },
+            { "Train-International",      new(0.00563, 0.00441, 0.00002, 0.00003, false) },
         };
 
-        public static readonly IReadOnlyDictionary<string, double> Factors2025 = new Dictionary<string, double>
+        // ── DEFRA 2025 combustion-only factors (for manually-logged trips) ────
+        public static readonly IReadOnlyDictionary<string, double> Factors2025 =
+            new Dictionary<string, double>
         {
             { "Flight-Domestic",            0.255133 },
             { "Flight-ShortHaul-Economy",   0.153180 },
@@ -49,63 +61,34 @@ namespace CarbonTrack.Models
             { "Ferry-Car",                  0.128860 },
         };
 
-        // ── Well-to-Tank (WTT / upstream) factors — kgCO2e per passenger-km ─
-        // Source: DEFRA Scope 3 WTT Conversion Factors, same publication year
-
-        public static readonly IReadOnlyDictionary<string, double> Wtt2024 = new Dictionary<string, double>
+        // ── DEFRA 2024 combustion-only factors (legacy / fallback) ────────────
+        public static readonly IReadOnlyDictionary<string, double> Factors2024 =
+            new Dictionary<string, double>
         {
-            { "Flight-Domestic",            0.02793 },
-            { "Flight-ShortHaul-Economy",   0.01744 },
-            { "Flight-ShortHaul-Business",  0.02616 },
-            { "Flight-LongHaul-Economy",    0.01684 },
-            { "Flight-LongHaul-Business",   0.04895 },
-            { "Flight-LongHaul-First",      0.06740 },
-            { "Train-National",             0.00447 },
-            { "Train-International",        0.00068 },
-            { "Car-Petrol",                 0.02734 },
-            { "Car-Diesel",                 0.00631 },
-            { "Car-Hybrid",                 0.01733 },
-            { "Car-Electric",               0.01349 },
-            { "Taxi",                       0.02429 },
-            { "Ferry-Foot",                 0.00302 },
-            { "Ferry-Car",                  0.02074 },
+            { "Flight-Domestic",            0.24503  },
+            { "Flight-ShortHaul-Economy",   0.15302  },
+            { "Flight-ShortHaul-Business",  0.22953  },
+            { "Flight-LongHaul-Economy",    0.14778  },
+            { "Flight-LongHaul-Business",   0.42965  },
+            { "Flight-LongHaul-First",      0.59147  },
+            { "Train-National",             0.03549  },
+            { "Train-International",        0.00601  },
+            { "Car-Petrol",                 0.17008  },
+            { "Car-Diesel",                 0.16387  },
+            { "Car-Hybrid",                 0.11672  },
+            { "Car-Electric",               0.05349  },
+            { "Taxi",                       0.14914  },
+            { "Ferry-Foot",                 0.01868  },
+            { "Ferry-Car",                  0.12964  },
         };
-
-        public static readonly IReadOnlyDictionary<string, double> Wtt2025 = new Dictionary<string, double>
-        {
-            { "Flight-Domestic",            0.02907 },
-            { "Flight-ShortHaul-Economy",   0.01746 },
-            { "Flight-ShortHaul-Business",  0.02619 },
-            { "Flight-LongHaul-Economy",    0.01683 },
-            { "Flight-LongHaul-Business",   0.04892 },
-            { "Flight-LongHaul-First",      0.06731 },
-            { "Train-National",             0.00423 },
-            { "Train-International",        0.00047 },
-            { "Car-Petrol",                 0.02587 },
-            { "Car-Diesel",                 0.00597 },
-            { "Car-Hybrid",                 0.01597 },
-            { "Car-Electric",               0.01290 },
-            { "Taxi",                       0.02301 },
-            { "Ferry-Foot",                 0.00285 },
-            { "Ferry-Car",                  0.01960 },
-        };
-
-        // ── Radiative Forcing Index (RFI) for flights ─────────────────────────
-        // DEFRA guidance: 1.891x multiplier applied to flight combustion factors only.
-        // Not mandated by DEFRA 2025 standard; provided for organisations that
-        // choose to apply it per GHG Protocol or client CRP requirements.
-        public const double FlightRfiMultiplier = 1.891;
 
         // ── Helpers ────────────────────────────────────────────────────────────
 
         public static IReadOnlyDictionary<string, double> GetFactors(int year) =>
             year <= 2024 ? Factors2024 : Factors2025;
 
-        public static IReadOnlyDictionary<string, double> GetWttFactors(int year) =>
-            year <= 2024 ? Wtt2024 : Wtt2025;
-
         public static string GetDefraLabel(int year) =>
-            year <= 2024 ? "DEFRA 2024" : "DEFRA 2025";
+            year <= 2024 ? "DESNZ 2024 WTW" : "DEFRA 2025";
 
         public static double GetFactor(string mode, int year)
         {
@@ -113,77 +96,132 @@ namespace CarbonTrack.Models
             return table.TryGetValue(mode, out double f) ? f : 0;
         }
 
-        public static double GetWttFactor(string mode, int year)
+        // ── UK cities for domestic flight detection ────────────────────────────
+        public static readonly HashSet<string> UkCities = new(StringComparer.OrdinalIgnoreCase)
         {
-            var table = GetWttFactors(year);
-            return table.TryGetValue(mode, out double f) ? f : 0;
+            "london","manchester","birmingham","glasgow","edinburgh","bristol","leeds",
+            "liverpool","sheffield","cardiff","newcastle","nottingham","southampton",
+            "brighton","coventry","hull","plymouth","exeter","york","oxford","cambridge",
+            "reading","luton","newquay","aberdeen","inverness","dundee","belfast",
+            "portsmouth","leicester","stoke","wolverhampton","sunderland","norwich",
+            "milton keynes","derby","fareham","telford","smethwick","hayes","llanelli",
+            "heathrow","gatwick","stansted","bristol airport",
+        };
+
+        // ── Journey string parsing ─────────────────────────────────────────────
+        // Input examples: "Plymouth - London", "London - Dallas - London", "London - Dallas - London "
+        public static (string origin, string destination, string via, bool isReturn)
+            ParseJourney(string raw)
+        {
+            var parts = raw.Split('-')
+                           .Select(p => p.Trim())
+                           .Where(p => !string.IsNullOrWhiteSpace(p))
+                           .ToList();
+
+            if (parts.Count == 0) return ("", "", "", false);
+            if (parts.Count == 1) return (parts[0], parts[0], "", false);
+
+            string origin = parts[0];
+            string dest   = parts[^1];
+            string via    = parts.Count >= 3 ? parts[1] : "";
+
+            // Return trip: first and last city are same (normalise for typos)
+            bool isReturn = NormaliseCity(origin) == NormaliseCity(dest);
+            // If return trip, the "destination" for reporting purposes is the via city
+            string reportDest = isReturn && !string.IsNullOrWhiteSpace(via) ? via : dest;
+
+            return (origin, reportDest, via, isReturn);
         }
 
-        // Infer the haul type for flights based on distance and class hint
-        public static string InferFlightMode(double distanceKm, string? classHint)
+        // ── Flight haul classification ─────────────────────────────────────────
+        // Input: intermediate/destination city, one-way distance in km
+        // Returns a CT mode code for the flight
+        public static string InferFlightMode(string viaOrDest, double onewayKm)
         {
-            string cls = (classHint ?? "economy").ToLowerInvariant();
-            bool isBusiness = cls.Contains("business") || cls.Contains("club");
-            bool isFirst    = cls.Contains("first");
+            string city = NormaliseCity(viaOrDest);
 
-            if (distanceKm < 800)
+            // Known UK destinations → domestic
+            if (UkCities.Contains(city) && onewayKm < 1500)
                 return "Flight-Domestic";
-            if (distanceKm <= 4000)
-                return isBusiness ? "Flight-ShortHaul-Business" : "Flight-ShortHaul-Economy";
-            return isFirst ? "Flight-LongHaul-First"
-                 : isBusiness ? "Flight-LongHaul-Business"
-                 : "Flight-LongHaul-Economy";
+
+            // Distance-based: 3700 km one-way ≈ 2300 miles = start of long-haul
+            if (onewayKm <= 3700) return "Flight-ShortHaul-Economy";
+            return "Flight-LongHaul-Economy";
         }
 
-        // Map a free-text vehicle/mode description to a CT mode code
-        public static (string mode, string confidence) MapVehicleText(string raw, double distanceKm = 0)
+        // ── Vehicle text → DESNZ mode code + WTW factor ───────────────────────
+        // Returns CT mode code and confidence level
+        public static (string mode, string confidence) MapRawMode(
+            string rawMode, string viaOrDest, double totalMiles)
         {
-            string s = raw.ToLowerInvariant().Trim();
+            string s = rawMode.ToLowerInvariant().Trim();
 
-            if (s.Contains("flight") || s.Contains("plane") || s.Contains("air") || s.Contains("flew"))
+            if (s.Contains("car") || s.Contains("drive") || s.Contains("drove"))
+                return ("Car-Average", "high");
+
+            if (s.Contains("train") || s.Contains("rail"))
             {
-                if (s.Contains("domestic"))                      return ("Flight-Domestic", "high");
-                if (s.Contains("short") || s.Contains("eu"))    return ("Flight-ShortHaul-Economy", "high");
-                if (s.Contains("long") || s.Contains("intercont")) return ("Flight-LongHaul-Economy", "high");
-                if (s.Contains("business"))                      return ("Flight-ShortHaul-Business", "medium");
-                if (s.Contains("first"))                         return ("Flight-LongHaul-First", "medium");
-                string inferred = distanceKm > 0 ? InferFlightMode(distanceKm, s) : "Flight-LongHaul-Economy";
-                return (inferred, distanceKm > 0 ? "medium" : "low");
+                // Simple heuristic: if via city is outside UK → international rail
+                bool intl = !string.IsNullOrWhiteSpace(viaOrDest) &&
+                            !UkCities.Contains(NormaliseCity(viaOrDest));
+                return (intl ? "Train-International" : "Train-National", "high");
             }
 
-            if (s.Contains("eurostar") || s.Contains("international") && (s.Contains("train") || s.Contains("rail")))
-                return ("Train-International", "high");
-            if (s.Contains("train") || s.Contains("rail") || s.Contains("national rail") || s.Contains("overground") || s.Contains("tram"))
-                return ("Train-National", "high");
-
-            if (s.Contains("electric") || s.Contains("bev") || s.Contains(" ev ") || s.Contains("ev,") || s.StartsWith("ev"))
-                return ("Car-Electric", "high");
-            if (s.Contains("hybrid"))
-                return ("Car-Hybrid", "high");
-            if (s.Contains("diesel"))
-                return ("Car-Diesel", "high");
-            if (s.Contains("taxi") || s.Contains("cab") || s.Contains("uber") || s.Contains("bolt") || s.Contains("black car"))
-                return ("Taxi", "high");
-            if (s.Contains("car") || s.Contains("drive") || s.Contains("drove") || s.Contains("vehicle") || s.Contains("petrol"))
-                return ("Car-Petrol", s.Contains("petrol") ? "high" : "medium");
-
-            if (s.Contains("ferry") || s.Contains("boat") || s.Contains("ship") || s.Contains("sea"))
+            if (s.Contains("plane") || s.Contains("flight") || s.Contains("air") || s.Contains("flew"))
             {
-                string mode = (s.Contains("foot") || s.Contains("walk") || s.Contains("passenger")) ? "Ferry-Foot" : "Ferry-Car";
-                return (mode, "medium");
+                // one-way km: if total miles represents a return trip, divide by 2
+                // We don't know here whether it's return — caller resolves
+                double onewayKm = (totalMiles / 0.621);
+                string flightMode = InferFlightMode(viaOrDest, onewayKm / 2); // assume return = /2
+                return (flightMode, "medium");
             }
 
             return ("", "none");
         }
 
-        // All known mode codes
+        // ── Date parsing ───────────────────────────────────────────────────────
+        // Handles: "YY MM DD" (e.g., "24 01 22"), plus standard formats
+        public static DateTime? ParseFlexDate(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+            raw = raw.Trim();
+
+            // YY MM DD with spaces
+            var spaceParts = raw.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (spaceParts.Length == 3 &&
+                int.TryParse(spaceParts[0], out int yy) && yy >= 0 && yy <= 99 &&
+                int.TryParse(spaceParts[1], out int mm) && mm >= 1 && mm <= 12 &&
+                int.TryParse(spaceParts[2], out int dd) && dd >= 1 && dd <= 31)
+            {
+                try { return new DateTime(2000 + yy, mm, dd); }
+                catch { /* invalid date */ }
+            }
+
+            // Standard formats
+            string[] fmts = { "dd/MM/yyyy","d/M/yyyy","yyyy-MM-dd","dd-MM-yyyy",
+                               "MM/dd/yyyy","d/M/yy","dd/MM/yy" };
+            if (DateTime.TryParseExact(raw, fmts,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var dt1)) return dt1;
+
+            if (DateTime.TryParse(raw, out var dt2)) return dt2;
+            return null;
+        }
+
+        // ── Helpers ────────────────────────────────────────────────────────────
+        private static string NormaliseCity(string s) =>
+            s.ToLowerInvariant().Trim()
+             .Replace("lodon", "london")   // common typo in real data
+             .Replace("mancester", "manchester")
+             .Replace("switerland", "switzerland");
+
         public static readonly IReadOnlyList<string> AllModes = new[]
         {
-            "Flight-Domestic", "Flight-ShortHaul-Economy", "Flight-ShortHaul-Business",
-            "Flight-LongHaul-Economy", "Flight-LongHaul-Business", "Flight-LongHaul-First",
-            "Train-National", "Train-International",
-            "Car-Petrol", "Car-Diesel", "Car-Hybrid", "Car-Electric", "Taxi",
-            "Ferry-Foot", "Ferry-Car",
+            "Flight-Domestic","Flight-ShortHaul-Economy","Flight-ShortHaul-Business",
+            "Flight-LongHaul-Economy","Flight-LongHaul-Business","Flight-LongHaul-First",
+            "Train-National","Train-International","Car-Average",
+            "Car-Petrol","Car-Diesel","Car-Hybrid","Car-Electric","Taxi",
+            "Ferry-Foot","Ferry-Car",
         };
     }
 }

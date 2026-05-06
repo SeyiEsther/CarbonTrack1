@@ -1,0 +1,169 @@
+@model CarbonTrack.Models.Organisation
+@{
+    ViewData["Title"] = "Set up your profile";
+    Layout = "_Layout";
+}
+
+<div style="max-width:680px;margin:0 auto">
+
+    <div style="text-align:center;margin-bottom:36px">
+        <div style="font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:8px">Set up your profile</div>
+        <div style="font-size:14px;color:var(--txm)">Takes 60 seconds. Your dashboard and reports will be tailored to your compliance requirements.</div>
+    </div>
+
+    <form method="post" asp-action="Save" asp-controller="Onboarding" id="onb-form">
+        @Html.AntiForgeryToken()
+
+        <!-- Step 1: Who are you? -->
+        <div class="onb-section">
+            <div class="onb-step">01</div>
+            <div class="onb-title">Who is using CarbonTrack?</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                @foreach (var (val, label, desc, icon) in new[]{
+                    ("Consultant",  "Sustainability Consultant", "Managing carbon data for multiple client organisations", "🌿"),
+                    ("Corporate",   "Corporate (In-house)",      "Reporting your own organisation's travel emissions",     "🏢"),
+                    ("SME",         "Small / Medium Enterprise", "Getting compliant without the complexity",               "⚡"),
+                    ("Government",  "Government / Public Sector","PPN 06/21 and CRP for public contracts",                "🏛️"),
+                })
+                {
+                    <label class="type-card" onclick="selectType('@val')">
+                        <input type="radio" name="userType" value="@val" class="sr-only" required
+                               @(Model?.UserType == val ? "checked" : "")>
+                        <div class="type-icon">@icon</div>
+                        <div class="type-label">@label</div>
+                        <div class="type-desc">@desc</div>
+                    </label>
+                }
+            </div>
+        </div>
+
+        <!-- Step 2: Sector -->
+        <div class="onb-section">
+            <div class="onb-step">02</div>
+            <div class="onb-title">What sector are you in?</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px" id="sector-pills">
+                @foreach (var s in new[]{ "Construction","Professional Services","Engineering",
+                    "Architecture & Design","Legal","Technology","Finance","Property & Real Estate",
+                    "Healthcare","Education","Energy","Manufacturing","Other" })
+                {
+                    <label class="sector-pill">
+                        <input type="radio" name="sector" value="@s" class="sr-only"
+                               @(Model?.Sector == s ? "checked" : "")>
+                        <span>@s</span>
+                    </label>
+                }
+            </div>
+        </div>
+
+        <!-- Step 3: Compliance frameworks -->
+        <div class="onb-section">
+            <div class="onb-step">03</div>
+            <div class="onb-title">Which frameworks apply to you? <span style="color:var(--txs);font-size:11px;font-weight:400">(select all that apply)</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="compliance-grid">
+                @{
+                    var flags = Model?.GetComplianceFlags() ?? Array.Empty<string>();
+                    var frameworks = new[]{
+                        ("SECR",        "SECR",         "Streamlined Energy & Carbon Reporting — mandatory for large UK companies"),
+                        ("PPN0621",     "PPN 06/21",    "Carbon Reduction Plans — required for UK government contracts > £5m"),
+                        ("GHGProtocol", "GHG Protocol", "Scope 3 Cat 6 & 7 — international standard for corporate reporting"),
+                        ("TCFD",        "TCFD",         "Task Force on Climate-related Financial Disclosures — UK listed companies"),
+                        ("ESOS",        "ESOS",         "Energy Savings Opportunity Scheme — Phase 3 compliance"),
+                        ("CSRD",        "CSRD",         "EU Corporate Sustainability Reporting Directive — EU operations"),
+                    };
+                }
+                @foreach (var (val, label, desc) in frameworks)
+                {
+                    <label class="compliance-card" onclick="toggleCompliance(this)">
+                        <input type="checkbox" name="flags_@val" value="@val" class="sr-only"
+                               @(flags.Contains(val) ? "checked" : "")>
+                        <div style="display:flex;align-items:flex-start;gap:10px">
+                            <div class="comp-check" id="chk-@val"></div>
+                            <div>
+                                <div style="font-size:13px;font-weight:600;color:var(--tx)">@label</div>
+                                <div style="font-size:11px;color:var(--txm);margin-top:2px">@desc</div>
+                            </div>
+                        </div>
+                    </label>
+                }
+            </div>
+        </div>
+
+        <!-- Step 4: Organisation details -->
+        <div class="onb-section">
+            <div class="onb-step">04</div>
+            <div class="onb-title">Organisation details <span style="color:var(--txs);font-size:11px;font-weight:400">(for intensity metrics)</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="fg">
+                    <label>Organisation name</label>
+                    <input type="text" name="orgName" value="@Model?.Name" placeholder="e.g. Acme Ltd" maxlength="200">
+                </div>
+                <div class="fg">
+                    <label>Contact email</label>
+                    <input type="email" name="contactEmail" value="@Model?.ContactEmail" placeholder="e.g. esg@acme.co.uk" maxlength="200">
+                </div>
+                <div class="fg">
+                    <label>Employees (FTE)</label>
+                    <input type="number" name="employees" value="@Model?.Employees" placeholder="e.g. 250" min="1" max="100000">
+                </div>
+                <div class="fg">
+                    <label>Annual turnover (£ million)</label>
+                    <input type="number" name="turnoverGBPm" value="@Model?.TurnoverGBPm" placeholder="e.g. 12.5" step="0.1" min="0">
+                </div>
+            </div>
+        </div>
+
+        <input type="hidden" name="complianceFlags" id="compliance-hidden">
+
+        <button type="submit" class="btn-submit" onclick="buildFlags()">Save profile &amp; go to dashboard →</button>
+    </form>
+
+</div>
+
+<style>
+.onb-section { background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:24px;margin-bottom:16px;position:relative }
+.onb-step { position:absolute;top:-11px;left:20px;background:var(--lv);color:#1a1a2e;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;letter-spacing:.06em }
+.onb-title { font-size:14px;font-weight:600;color:var(--tx);margin-bottom:16px }
+
+.type-card { display:flex;flex-direction:column;gap:6px;border:1px solid var(--bd);border-radius:10px;padding:16px;cursor:pointer;transition:all .15s;background:var(--bg3) }
+.type-card:hover { border-color:var(--sc) }
+.type-card:has(input:checked) { border-color:var(--lv);background:var(--lvl) }
+.type-icon { font-size:24px }
+.type-label { font-size:13px;font-weight:600;color:var(--tx) }
+.type-desc { font-size:11px;color:var(--txm);line-height:1.4 }
+
+.sector-pill { cursor:pointer }
+.sector-pill span { display:inline-block;padding:6px 12px;border-radius:20px;font-size:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--txm);transition:all .15s }
+.sector-pill:has(input:checked) span { background:var(--scl);border-color:rgba(92,122,90,0.4);color:var(--tx);font-weight:500 }
+.sector-pill:hover span { border-color:var(--sc) }
+
+.compliance-card { display:block;border:1px solid var(--bd);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;background:var(--bg3) }
+.compliance-card:hover { border-color:var(--sc) }
+.compliance-card:has(input:checked) { border-color:var(--lv);background:var(--lvl) }
+.comp-check { width:16px;height:16px;border:2px solid var(--bd);border-radius:3px;flex-shrink:0;margin-top:2px;transition:all .15s }
+.compliance-card:has(input:checked) .comp-check { background:var(--lv);border-color:var(--lv) }
+
+.sr-only { position:absolute;opacity:0;pointer-events:none }
+</style>
+
+<script>
+function selectType(val) {
+    document.querySelector(`input[name="userType"][value="${val}"]`).checked = true;
+}
+
+function toggleCompliance(card) {
+    const cb = card.querySelector('input[type="checkbox"]');
+    cb.checked = !cb.checked;
+}
+
+function buildFlags() {
+    const checked = [...document.querySelectorAll('input[name^="flags_"]:checked')]
+        .map(cb => cb.value);
+    document.getElementById('compliance-hidden').value = checked.join(',');
+}
+
+// Pre-fill check states on load
+document.querySelectorAll('.compliance-card').forEach(card => {
+    const cb = card.querySelector('input[type="checkbox"]');
+    if (cb.checked) card.style.borderColor = 'var(--lv)';
+});
+</script>

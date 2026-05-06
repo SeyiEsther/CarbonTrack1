@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
 using OfficeOpenXml;
-using System.Text.Json;
+using System.Globalization;
 
 namespace CarbonTrack.Controllers
 {
@@ -11,22 +11,26 @@ namespace CarbonTrack.Controllers
         private readonly CarbonTrackContext _context;
         private readonly ILogger<UploadController> _logger;
 
-        // Header name → canonical field, checked as lowercase-normalized substrings
+        // ── Column header → canonical field ───────────────────────────────────
+        // Each entry: pattern substrings to match (lowercase), field name
         private static readonly (string[] Patterns, string Field)[] HeaderPatterns =
         {
-            (new[]{ "date","when","day","travel date","trip date","departure date","journey date" }, "date"),
-            (new[]{ "from","origin","departure","start","source","from city","depart","leaving","leaving from" }, "origin"),
-            (new[]{ "to","destination","arrival","end","dest","to city","arriving","arriving at","going to" }, "destination"),
-            (new[]{ "mode","transport","vehicle","type","travel type","method","travel mode","trip type","by" }, "mode"),
-            (new[]{ "distance","km","kilometres","kilometers","miles","mileage","dist","distance (km)","distance (miles)","journey distance" }, "distance"),
-            (new[]{ "pax","passengers","people","travellers","headcount","occupants","person","no. of passengers" }, "passengers"),
-            (new[]{ "class","cabin","seat","ticket class","travel class","booking class" }, "class"),
+            (new[]{ "date out","date_out","departure date","travel date","trip date","date" }, "dateout"),
+            (new[]{ "date back","date_back","return date","back" },                            "dateback"),
+            (new[]{ "journey","route","itinerary","trip route","from/to" },                   "journey"),
+            (new[]{ "from","origin","departure","depart","start city","leaving from" },       "origin"),
+            (new[]{ "to","destination","dest","arrival","end city","arriving" },              "dest"),
+            (new[]{ "mode","transport","vehicle","travel type","method","by" },               "mode"),
+            (new[]{ "miles","mileage","distance (miles)" },                                   "miles"),
+            (new[]{ "km","kilometres","kilometers","distance (km)","distance" },              "km"),
+            (new[]{ "people","pax","passengers","persons","travellers","headcount" },         "passengers"),
+            (new[]{ "class","cabin","seat" },                                                 "class"),
         };
 
         public UploadController(CarbonTrackContext context, ILogger<UploadController> logger)
         {
             _context = context;
-            _logger = logger;
+            _logger  = logger;
         }
 
         // GET /Upload
@@ -37,10 +41,10 @@ namespace CarbonTrack.Controllers
             return View();
         }
 
-        // POST /Upload/Parse  — returns JSON preview
+        // POST /Upload/Parse — parse file, return JSON preview
         [HttpPost]
-        [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
-        public async Task<IActionResult> Parse(IFormFile? file, bool includeWtt = false, bool includeRfi = false)
+        [RequestSizeLimit(10 * 1024 * 1024)]
+        public async Task<IActionResult> Parse(IFormFile? file)
         {
             if (file == null || file.Length == 0)
                 return Json(new { success = false, error = "No file received." });
@@ -51,128 +55,129 @@ namespace CarbonTrack.Controllers
 
             try
             {
-                List<List<string>> rawRows;
-
-                if (ext == ".xlsx")
-                    rawRows = await ParseExcel(file);
-                else
-                    rawRows = await ParseCsv(file);
+                List<List<string>> rawRows = ext == ".xlsx"
+                    ? await ParseExcel(file)
+                    : await ParseCsv(file);
 
                 if (rawRows.Count < 2)
-                    return Json(new { success = false, error = "File contains fewer than 2 rows (header + data)." });
+                    return Json(new { success = false, error = "File must have a header row plus at least one data row." });
 
                 var headers = rawRows[0];
                 var colMap  = DetectColumns(headers);
-                var result  = new ParseResult
-                {
-                    Success         = true,
-                    DetectedHeaders = headers,
-                    ColumnMap       = colMap,
-                };
+                var rows    = new List<BulkRow>();
 
                 for (int i = 1; i < rawRows.Count; i++)
                 {
-                    var row = rawRows[i];
-                    if (row.All(string.IsNullOrWhiteSpace)) continue; // skip blank rows
-
-                    var bulk = ProcessRow(row, colMap, i + 1, includeWtt, includeRfi);
-                    result.Rows.Add(bulk);
+                    var raw = rawRows[i];
+                    if (raw.All(string.IsNullOrWhiteSpace)) continue;
+                    rows.Add(ProcessRow(raw, colMap, i + 1));
                 }
 
-                _logger.LogInformation("Upload parsed: {Total} rows, {Ready} ready, {Review} review, {Gap} gaps",
-                    result.Rows.Count, result.ReadyCount, result.ReviewCount, result.GapCount);
+                _logger.LogInformation("Upload parsed: {T} rows — {R} ready, {V} review, {G} gaps",
+                    rows.Count,
+                    rows.Count(r => r.Status == RowStatus.Ready),
+                    rows.Count(r => r.Status == RowStatus.NeedsReview),
+                    rows.Count(r => r.Status == RowStatus.Gap));
+
+                double totalKg = rows.Where(r => r.Status != RowStatus.Gap).Sum(r => r.KgCO2e);
 
                 return Json(new
                 {
-                    success      = true,
+                    success     = true,
                     headers,
-                    columnMap    = colMap,
-                    rows         = result.Rows.Select(SerializeRow),
-                    readyCount   = result.ReadyCount,
-                    reviewCount  = result.ReviewCount,
-                    gapCount     = result.GapCount,
-                    totalKgCO2e  = result.TotalKgCO2e,
-                    totalTCO2e   = Math.Round(result.TotalKgCO2e / 1000, 4),
+                    columnMap   = colMap,
+                    rows        = rows.Select(SerialiseRow).ToList(),
+                    readyCount  = rows.Count(r => r.Status == RowStatus.Ready),
+                    reviewCount = rows.Count(r => r.Status == RowStatus.NeedsReview),
+                    gapCount    = rows.Count(r => r.Status == RowStatus.Gap),
+                    totalKgCO2e = Math.Round(totalKg, 2),
+                    totalTCO2e  = Math.Round(totalKg / 1000, 4),
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Upload parse failed for {FileName}", file.FileName);
-                return Json(new { success = false, error = $"Parse failed: {ex.Message}" });
+                _logger.LogError(ex, "Upload parse failed: {File}", file.FileName);
+                return Json(new { success = false, error = $"Parse error: {ex.Message}" });
             }
         }
 
-        // POST /Upload/Confirm — bulk import rows to DB
+        // POST /Upload/Confirm — bulk insert importable rows
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Confirm([FromBody] ConfirmRequest req)
         {
             if (req?.Rows == null || req.Rows.Count == 0)
-            {
-                TempData["Error"] = "No rows to import.";
                 return Json(new { success = false, error = "No rows to import." });
-            }
 
             try
             {
-                var org = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1)
-                          ?? new Organisation { Id = 1, Name = "Default Organisation" };
-
                 var trips = new List<Trip>();
+
                 foreach (var r in req.Rows)
                 {
                     if (!DateTime.TryParse(r.TripDate, out var dt)) continue;
                     if (r.DistanceKm <= 0 || string.IsNullOrWhiteSpace(r.TransportMode)) continue;
 
-                    int year = dt.Year;
-                    double ef  = DefraFactorTables.GetFactor(r.TransportMode, year);
-                    double wtt = req.IncludeWtt ? DefraFactorTables.GetWttFactor(r.TransportMode, year) : 0;
-                    double totalEf = ef + wtt;
+                    // Re-derive the factor from the DESNZ 2024 table (source of truth)
+                    double ef = 0, co2 = 0, ch4 = 0, n2o = 0;
+                    bool   isVehicleKm = false;
 
-                    double kgCO2e = Math.Round(r.DistanceKm * totalEf * r.Passengers, 2);
+                    if (DefraFactorTables.Desnz2024.TryGetValue(r.TransportMode, out var f))
+                    {
+                        ef = f.Total; co2 = f.CO2; ch4 = f.CH4; n2o = f.N2O;
+                        isVehicleKm = f.IsVehicleKm;
+                    }
 
-                    bool isFlight = r.TransportMode.StartsWith("Flight");
-                    if (req.IncludeRfi && isFlight)
-                        kgCO2e = Math.Round(kgCO2e * DefraFactorTables.FlightRfiMultiplier, 2);
+                    double kgCO2e = isVehicleKm
+                        ? Math.Round(r.DistanceKm * ef, 2)
+                        : Math.Round(r.DistanceKm * ef * r.Passengers, 2);
 
-                    string formula = req.IncludeRfi && isFlight
-                        ? $"{r.DistanceKm:F2} km × {totalEf:F6} kgCO₂e/km × {r.Passengers} pax × {DefraFactorTables.FlightRfiMultiplier} RFI"
-                        : req.IncludeWtt
-                            ? $"{r.DistanceKm:F2} km × ({ef:F6} + {wtt:F6} WTT) kgCO₂e/km × {r.Passengers} pax"
-                            : $"{r.DistanceKm:F2} km × {ef:F6} kgCO₂e/km × {r.Passengers} pax";
+                    double kgCO2 = isVehicleKm
+                        ? Math.Round(r.DistanceKm * co2, 4)
+                        : Math.Round(r.DistanceKm * co2 * r.Passengers, 4);
 
-                    string methodology = r.TransportMode.StartsWith("Flight")
-                        ? "Haversine Great Circle"
-                        : string.IsNullOrWhiteSpace(r.Methodology) ? "Uploaded – source data" : r.Methodology;
+                    double kgCH4 = isVehicleKm
+                        ? Math.Round(r.DistanceKm * ch4, 6)
+                        : Math.Round(r.DistanceKm * ch4 * r.Passengers, 6);
+
+                    double kgN2O = isVehicleKm
+                        ? Math.Round(r.DistanceKm * n2o, 6)
+                        : Math.Round(r.DistanceKm * n2o * r.Passengers, 6);
+
+                    string formula = isVehicleKm
+                        ? $"{r.DistanceKm:F2} km × {ef:F5} kgCO₂e/km (vehicle-km, no pax factor)"
+                        : $"{r.DistanceKm:F2} km × {ef:F5} kgCO₂e/km × {r.Passengers} pax";
 
                     trips.Add(new Trip
                     {
-                        Origin               = r.Origin.Trim(),
-                        Destination          = r.Destination.Trim(),
-                        TripDate             = dt,
-                        TransportMode        = r.TransportMode,
-                        TravelClass          = r.TravelClass,
-                        Passengers           = Math.Clamp(r.Passengers, 1, 500),
-                        DistanceKm           = Math.Round(r.DistanceKm, 2),
-                        EmissionFactor       = totalEf,
-                        KgCO2e               = kgCO2e,
-                        DistanceMethodology  = methodology,
-                        DefraFactorYear      = DefraFactorTables.GetDefraLabel(year),
-                        Formula              = formula,
-                        CreatedAt            = DateTime.UtcNow,
-                        OrganisationId       = 1,
+                        Origin              = r.Origin.Trim(),
+                        Destination         = r.Destination.Trim(),
+                        TripDate            = dt,
+                        TransportMode       = r.TransportMode,
+                        TravelClass         = r.TravelClass,
+                        Passengers          = Math.Clamp(r.Passengers, 1, 500),
+                        DistanceKm          = Math.Round(r.DistanceKm, 2),
+                        EmissionFactor      = ef,
+                        KgCO2e              = kgCO2e,
+                        KgCO2               = kgCO2,
+                        KgCH4               = kgCH4,
+                        KgN2O               = kgN2O,
+                        DistanceMethodology = r.Methodology ?? "Uploaded – source data",
+                        DefraFactorYear     = "DESNZ 2024 WTW",
+                        Formula             = formula,
+                        CreatedAt           = DateTime.UtcNow,
+                        OrganisationId      = 1,
                     });
                 }
 
                 if (trips.Count == 0)
-                {
-                    return Json(new { success = false, error = "No valid rows could be imported. Check required fields." });
-                }
+                    return Json(new { success = false, error = "No valid rows could be imported." });
 
                 await _context.Trips.AddRangeAsync(trips);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Bulk upload: {Count} trips imported", trips.Count);
+                _logger.LogInformation("Bulk import: {Count} trips saved", trips.Count);
+
                 return Json(new
                 {
                     success  = true,
@@ -188,27 +193,22 @@ namespace CarbonTrack.Controllers
             }
         }
 
-        // ── Parsing helpers ───────────────────────────────────────────────────
+        // ── File parsers ───────────────────────────────────────────────────────
 
         private static async Task<List<List<string>>> ParseExcel(IFormFile file)
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             var rows = new List<List<string>>();
-
-            using var stream = new MemoryStream();
-            await file.CopyToAsync(stream);
-            using var pkg = new ExcelPackage(stream);
-
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            using var pkg = new ExcelPackage(ms);
             var ws = pkg.Workbook.Worksheets.FirstOrDefault();
-            if (ws == null || ws.Dimension == null) return rows;
+            if (ws?.Dimension == null) return rows;
 
-            int maxRow = ws.Dimension.End.Row;
-            int maxCol = ws.Dimension.End.Column;
-
-            for (int r = 1; r <= maxRow; r++)
+            for (int r = 1; r <= ws.Dimension.End.Row; r++)
             {
                 var row = new List<string>();
-                for (int c = 1; c <= maxCol; c++)
+                for (int c = 1; c <= ws.Dimension.End.Column; c++)
                     row.Add(ws.Cells[r, c].Text ?? "");
                 rows.Add(row);
             }
@@ -218,13 +218,12 @@ namespace CarbonTrack.Controllers
         private static async Task<List<List<string>>> ParseCsv(IFormFile file)
         {
             var rows = new List<List<string>>();
-            using var reader = new System.IO.StreamReader(file.OpenReadStream());
-
+            using var reader = new StreamReader(file.OpenReadStream());
             string? line;
             while ((line = await reader.ReadLineAsync()) != null)
             {
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                rows.Add(SplitCsvLine(line));
+                if (!string.IsNullOrWhiteSpace(line))
+                    rows.Add(SplitCsvLine(line));
             }
             return rows;
         }
@@ -232,212 +231,255 @@ namespace CarbonTrack.Controllers
         private static List<string> SplitCsvLine(string line)
         {
             var fields = new List<string>();
-            bool inQuotes = false;
-            var current = new System.Text.StringBuilder();
-
+            bool inQ = false;
+            var cur = new System.Text.StringBuilder();
             for (int i = 0; i < line.Length; i++)
             {
                 char c = line[i];
                 if (c == '"')
                 {
-                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
-                    { current.Append('"'); i++; }
-                    else inQuotes = !inQuotes;
+                    if (inQ && i + 1 < line.Length && line[i + 1] == '"') { cur.Append('"'); i++; }
+                    else inQ = !inQ;
                 }
-                else if (c == ',' && !inQuotes)
-                { fields.Add(current.ToString()); current.Clear(); }
-                else current.Append(c);
+                else if (c == ',' && !inQ) { fields.Add(cur.ToString()); cur.Clear(); }
+                else cur.Append(c);
             }
-            fields.Add(current.ToString());
+            fields.Add(cur.ToString());
             return fields;
         }
 
-        // ── Column detection ──────────────────────────────────────────────────
+        // ── Column detection ────────────────────────────────────────────────────
 
         private static ColumnMap DetectColumns(List<string> headers)
         {
             var map = new ColumnMap();
-            bool distanceMiles = false;
 
             for (int i = 0; i < headers.Count; i++)
             {
                 string h = headers[i].ToLowerInvariant().Trim();
                 foreach (var (patterns, field) in HeaderPatterns)
                 {
-                    if (patterns.Any(p => h.Contains(p)))
+                    if (!patterns.Any(p => h == p || h.Contains(p))) continue;
+                    switch (field)
                     {
-                        switch (field)
-                        {
-                            case "date":       map.DateCol        ??= i; break;
-                            case "origin":     map.OriginCol      ??= i; break;
-                            case "destination":map.DestCol        ??= i; break;
-                            case "mode":       map.ModeCol        ??= i; break;
-                            case "distance":
-                                map.DistanceCol ??= i;
-                                if (h.Contains("mile")) distanceMiles = true;
-                                break;
-                            case "passengers": map.PassengersCol  ??= i; break;
-                            case "class":      map.ClassCol       ??= i; break;
-                        }
-                        break;
+                        case "dateout":    map.DateOutCol    ??= i; break;
+                        case "dateback":   map.DateBackCol   ??= i; break;
+                        case "journey":    map.JourneyCol    ??= i; break;
+                        case "origin":     map.OriginCol     ??= i; break;
+                        case "dest":       map.DestCol       ??= i; break;
+                        case "mode":       map.ModeCol       ??= i; break;
+                        case "miles":      map.DistanceCol   ??= i; map.InputIsMiles = true;  break;
+                        case "km":         map.DistanceCol   ??= i; map.InputIsMiles = false; break;
+                        case "passengers": map.PassengersCol ??= i; break;
+                        case "class":      map.ClassCol      ??= i; break;
                     }
+                    break;
                 }
             }
-            map.DistanceIsMiles = distanceMiles;
             return map;
         }
 
-        // ── Row processing ────────────────────────────────────────────────────
+        // ── Row processing ─────────────────────────────────────────────────────
 
-        private static BulkRow ProcessRow(List<string> cells, ColumnMap col, int rowNum,
-                                          bool includeWtt, bool includeRfi)
+        private static BulkRow ProcessRow(List<string> cells, ColumnMap col, int rowNum)
         {
-            string Cell(int? idx) => idx.HasValue && idx.Value < cells.Count ? cells[idx.Value].Trim() : "";
+            string Cell(int? idx) => idx.HasValue && idx.Value < cells.Count
+                ? cells[idx.Value].Trim() : "";
 
             var bulk = new BulkRow
             {
                 SourceRowNumber = rowNum,
-                RawDate         = Cell(col.DateCol),
+                RawDateOut      = Cell(col.DateOutCol),
+                RawDateBack     = Cell(col.DateBackCol),
+                RawJourney      = Cell(col.JourneyCol),
                 RawOrigin       = Cell(col.OriginCol),
                 RawDestination  = Cell(col.DestCol),
                 RawMode         = Cell(col.ModeCol),
                 RawDistance     = Cell(col.DistanceCol),
                 RawPassengers   = Cell(col.PassengersCol),
                 RawClass        = Cell(col.ClassCol),
+                InputWasMiles   = col.InputIsMiles,
             };
 
-            // Date
-            if (DateTime.TryParse(bulk.RawDate, out var dt))
-                bulk.TripDate = dt;
-            else
+            // ── 1. Date ───────────────────────────────────────────────────────
+            bulk.TripDate = DefraFactorTables.ParseFlexDate(bulk.RawDateOut ?? "");
+            if (bulk.TripDate == null)
                 bulk.Issues.Add("Date missing or unrecognised");
 
-            // Origin / Destination
-            bulk.Origin      = bulk.RawOrigin      ?? "";
-            bulk.Destination = bulk.RawDestination ?? "";
+            // ── 2. Journey / origin / destination ─────────────────────────────
+            if (!string.IsNullOrWhiteSpace(bulk.RawJourney))
+            {
+                var (origin, dest, via, isReturn) =
+                    DefraFactorTables.ParseJourney(bulk.RawJourney);
+                bulk.Origin      = origin;
+                bulk.Destination = dest;
+                bulk.Via         = via;
+                bulk.IsReturnTrip = isReturn;
+            }
+            else
+            {
+                bulk.Origin      = bulk.RawOrigin      ?? "";
+                bulk.Destination = bulk.RawDestination ?? "";
+            }
+
             if (string.IsNullOrWhiteSpace(bulk.Origin))      bulk.Issues.Add("Origin missing");
             if (string.IsNullOrWhiteSpace(bulk.Destination)) bulk.Issues.Add("Destination missing");
 
-            // Passengers
-            if (int.TryParse(bulk.RawPassengers, out int pax) && pax > 0)
+            // ── 3. Passengers ──────────────────────────────────────────────────
+            if (int.TryParse(bulk.RawPassengers, out int pax) && pax >= 1)
                 bulk.Passengers = Math.Min(pax, 500);
 
-            // Distance
-            if (double.TryParse(bulk.RawDistance, System.Globalization.NumberStyles.Any,
-                                 System.Globalization.CultureInfo.InvariantCulture, out double dist) && dist > 0)
+            // ── 4. Distance — miles ÷ 0.621 ────────────────────────────────────
+            if (double.TryParse(bulk.RawDistance,
+                    NumberStyles.Any, CultureInfo.InvariantCulture, out double dist) && dist > 0)
             {
-                bulk.DistanceKm    = col.DistanceIsMiles ? Math.Round(dist * 1.60934, 2) : Math.Round(dist, 2);
-                bulk.DistanceMiles = col.DistanceIsMiles;
+                bulk.DistanceMiles = col.InputIsMiles ? dist : dist * 0.621;
+                bulk.DistanceKm    = col.InputIsMiles
+                    ? Math.Round(dist / 0.621, 2)   // exact client rule: miles ÷ 0.621
+                    : Math.Round(dist, 2);
             }
             else
-                bulk.Issues.Add("Distance missing — will need manual entry or API lookup");
+                bulk.Issues.Add("Distance missing or zero");
 
-            // Transport mode
-            (string modeCode, string confidence) = DefraFactorTables.MapVehicleText(bulk.RawMode ?? "", bulk.DistanceKm);
+            // ── 5. Transport mode → DESNZ mode code ────────────────────────────
+            string rawMode = bulk.RawMode ?? "";
+            string viaCity = !string.IsNullOrWhiteSpace(bulk.Via)
+                ? bulk.Via : bulk.Destination;
+
+            (string modeCode, string confidence) = MapMode(rawMode, viaCity, bulk.DistanceMiles, bulk.IsReturnTrip);
             bulk.TransportMode  = modeCode;
             bulk.ModeConfidence = confidence;
             bulk.TravelClass    = string.IsNullOrWhiteSpace(bulk.RawClass) ? null : bulk.RawClass;
 
             if (string.IsNullOrWhiteSpace(modeCode))
-                bulk.Issues.Add($"Transport mode not recognised: \"{bulk.RawMode}\"");
+                bulk.Issues.Add($"Transport mode not recognised: \"{rawMode}\"");
 
-            // Calculate if we have enough data
-            if (bulk.TripDate.HasValue && !string.IsNullOrWhiteSpace(modeCode) && bulk.DistanceKm > 0)
+            // ── 6. Calculate emissions ─────────────────────────────────────────
+            if (bulk.TripDate != null && !string.IsNullOrWhiteSpace(modeCode) && bulk.DistanceKm > 0)
             {
-                int year = bulk.TripDate.Value.Year;
-                // For dates earlier than 2024, use 2024 factors with a warning
-                if (year < 2024)
+                if (DefraFactorTables.Desnz2024.TryGetValue(modeCode, out var f))
                 {
-                    bulk.Issues.Add($"Date is {year}: no DEFRA factor table available prior to 2024 — using 2024 factors as fallback");
-                    year = 2024;
-                }
+                    bulk.EmissionFactor = f.Total;
+                    bulk.IsVehicleKm    = f.IsVehicleKm;
 
-                double ef  = DefraFactorTables.GetFactor(modeCode, year);
-                double wtt = includeWtt ? DefraFactorTables.GetWttFactor(modeCode, year) : 0;
+                    // Car: vehicle-km → no passenger multiplier
+                    // All others: passenger-km → multiply by passengers
+                    if (f.IsVehicleKm)
+                    {
+                        bulk.KgCO2e = Math.Round(bulk.DistanceKm * f.Total, 2);
+                        bulk.KgCO2  = Math.Round(bulk.DistanceKm * f.CO2,   4);
+                        bulk.KgCH4  = Math.Round(bulk.DistanceKm * f.CH4,   6);
+                        bulk.KgN2O  = Math.Round(bulk.DistanceKm * f.N2O,   6);
+                        bulk.Formula = $"{bulk.DistanceMiles:F1} mi → {bulk.DistanceKm:F2} km × {f.Total:F5} kgCO₂e/km [vehicle-km]";
+                    }
+                    else
+                    {
+                        bulk.KgCO2e = Math.Round(bulk.DistanceKm * f.Total * bulk.Passengers, 2);
+                        bulk.KgCO2  = Math.Round(bulk.DistanceKm * f.CO2   * bulk.Passengers, 4);
+                        bulk.KgCH4  = Math.Round(bulk.DistanceKm * f.CH4   * bulk.Passengers, 6);
+                        bulk.KgN2O  = Math.Round(bulk.DistanceKm * f.N2O   * bulk.Passengers, 6);
+                        bulk.Formula = $"{bulk.DistanceMiles:F1} mi → {bulk.DistanceKm:F2} km × {f.Total:F5} kgCO₂e/km × {bulk.Passengers} pax";
+                    }
 
-                if (ef == 0)
-                {
-                    bulk.Issues.Add($"No DEFRA factor found for mode \"{modeCode}\"");
+                    bulk.DefraYear   = "DESNZ 2024 WTW";
+                    bulk.Methodology = modeCode.StartsWith("Flight")
+                        ? "Source data miles"
+                        : "Source data miles";
                 }
                 else
                 {
-                    double totalEf = ef + wtt;
-                    bulk.EmissionFactor = ef;
-                    bulk.WttFactor      = wtt;
-                    bulk.KgCO2e         = Math.Round(bulk.DistanceKm * totalEf * bulk.Passengers, 2);
-                    bulk.KgCO2eWtt      = includeWtt ? Math.Round(bulk.DistanceKm * wtt * bulk.Passengers, 4) : 0;
-                    bulk.DefraYear      = DefraFactorTables.GetDefraLabel(bulk.TripDate.Value.Year);
-                    bulk.Methodology    = DefraCalculator.GetDistanceMethodology(modeCode);
-
-                    bool isFlight = modeCode.StartsWith("Flight");
-                    if (includeRfi && isFlight)
-                        bulk.KgCO2eRfi = Math.Round(bulk.KgCO2e * DefraFactorTables.FlightRfiMultiplier, 2);
-
-                    bulk.Formula = includeRfi && isFlight
-                        ? $"{bulk.DistanceKm:F2} km × {totalEf:F6} kgCO₂e/km × {bulk.Passengers} pax × {DefraFactorTables.FlightRfiMultiplier} RFI"
-                        : includeWtt
-                            ? $"{bulk.DistanceKm:F2} km × ({ef:F6}+{wtt:F6}WTT) × {bulk.Passengers} pax"
-                            : $"{bulk.DistanceKm:F2} km × {ef:F6} kgCO₂e/km × {bulk.Passengers} pax";
+                    bulk.Issues.Add($"No DESNZ 2024 WTW factor for \"{modeCode}\"");
                 }
             }
 
-            // Determine row status
-            if (bulk.Issues.Count == 0)
-                bulk.Status = RowStatus.Ready;
-            else if (bulk.KgCO2e > 0 && bulk.Issues.All(i => i.Contains("Date is ") || i.Contains("miles") || i.Contains("confidence")))
-                bulk.Status = RowStatus.NeedsReview;
-            else if (bulk.KgCO2e > 0 && bulk.Issues.Count <= 2 && !bulk.Issues.Any(i => i.Contains("missing")))
-                bulk.Status = RowStatus.NeedsReview;
-            else if (bulk.KgCO2e == 0)
-                bulk.Status = RowStatus.Gap;
-            else
-                bulk.Status = RowStatus.NeedsReview;
+            // ── 7. Row status ──────────────────────────────────────────────────
+            bool hasCritical = bulk.Issues.Any(i =>
+                i.Contains("missing") || i.Contains("not recog") || i.Contains("No DESNZ"));
+
+            bulk.Status = bulk.KgCO2e > 0 && !hasCritical
+                ? (bulk.Issues.Count == 0 ? RowStatus.Ready : RowStatus.NeedsReview)
+                : RowStatus.Gap;
 
             return bulk;
         }
 
-        private static object SerializeRow(BulkRow r) => new
+        // ── Mode mapping ───────────────────────────────────────────────────────
+
+        private static (string mode, string confidence) MapMode(
+            string rawMode, string viaOrDest, double totalMiles, bool isReturn)
+        {
+            string s = rawMode.ToLowerInvariant().Trim();
+
+            if (s == "car" || s.Contains("car") || s.Contains("drive") || s.Contains("van"))
+                return ("Car-Average", "high");
+
+            if (s == "train" || s.Contains("train") || s.Contains("rail"))
+            {
+                bool intl = !string.IsNullOrWhiteSpace(viaOrDest) &&
+                            !DefraFactorTables.UkCities.Contains(viaOrDest.ToLowerInvariant().Trim());
+                return (intl ? "Train-International" : "Train-National", "high");
+            }
+
+            if (s == "plane" || s.Contains("plane") || s.Contains("flight") ||
+                s.Contains("air")  || s.Contains("flew"))
+            {
+                // One-way km: if it's a return trip the source miles is total round-trip
+                double onewayMiles = isReturn ? totalMiles / 2.0 : totalMiles;
+                double onewayKm    = onewayMiles / 0.621;
+                string flightMode  = DefraFactorTables.InferFlightMode(viaOrDest, onewayKm);
+                return (flightMode, "medium");
+            }
+
+            return ("", "none");
+        }
+
+        // ── Serialise for JSON response ────────────────────────────────────────
+
+        private static object SerialiseRow(BulkRow r) => new
         {
             sourceRow      = r.SourceRowNumber,
             status         = r.Status.ToString().ToLower(),
             tripDate       = r.TripDate?.ToString("yyyy-MM-dd") ?? "",
-            tripDateFmt    = r.TripDate?.ToString("dd MMM yyyy") ?? r.RawDate ?? "",
+            tripDateFmt    = r.TripDate?.ToString("dd MMM yyyy") ?? r.RawDateOut ?? "",
             origin         = r.Origin,
             destination    = r.Destination,
+            via            = r.Via,
+            isReturnTrip   = r.IsReturnTrip,
+            rawJourney     = r.RawJourney ?? $"{r.Origin} → {r.Destination}",
             transportMode  = r.TransportMode,
-            travelClass    = r.TravelClass,
             passengers     = r.Passengers,
-            distanceKm     = r.DistanceKm,
             distanceMiles  = r.DistanceMiles,
+            distanceKm     = r.DistanceKm,
+            inputWasMiles  = r.InputWasMiles,
             emissionFactor = r.EmissionFactor,
-            wttFactor      = r.WttFactor,
+            isVehicleKm    = r.IsVehicleKm,
             kgCO2e         = r.KgCO2e,
-            kgCO2eRfi      = r.KgCO2eRfi,
+            kgCO2          = r.KgCO2,
+            kgCH4          = r.KgCH4,
+            kgN2O          = r.KgN2O,
             formula        = r.Formula,
             defraYear      = r.DefraYear,
-            methodology    = r.Methodology,
             modeConfidence = r.ModeConfidence,
             issues         = r.Issues,
         };
     }
 
-    // Request body model for confirm endpoint
+    // ── Confirm request models ─────────────────────────────────────────────────
+
     public class ConfirmRequest
     {
-        public bool IncludeWtt { get; set; }
-        public bool IncludeRfi { get; set; }
         public List<ConfirmRow> Rows { get; set; } = new();
     }
 
     public class ConfirmRow
     {
-        public string TripDate      { get; set; } = "";
-        public string Origin        { get; set; } = "";
-        public string Destination   { get; set; } = "";
-        public string TransportMode { get; set; } = "";
-        public string? TravelClass  { get; set; }
-        public int    Passengers    { get; set; } = 1;
-        public double DistanceKm    { get; set; }
-        public string? Methodology  { get; set; }
+        public string  TripDate      { get; set; } = "";
+        public string  Origin        { get; set; } = "";
+        public string  Destination   { get; set; } = "";
+        public string  TransportMode { get; set; } = "";
+        public string? TravelClass   { get; set; }
+        public int     Passengers    { get; set; } = 1;
+        public double  DistanceKm    { get; set; }
+        public string? Methodology   { get; set; }
     }
 }

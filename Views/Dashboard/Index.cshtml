@@ -1,6 +1,9 @@
 @{
     ViewData["Title"] = "Dashboard";
     Layout = "_Layout";
+    var org = ViewBag.Org as CarbonTrack.Models.Organisation;
+    bool isConsultant = org?.UserType == "Consultant";
+    bool isGovt       = org?.UserType == "Government";
 }
 
 @if (ViewBag.Success != null)
@@ -16,13 +19,69 @@
     </div>
 }
 
+@if (ViewBag.ShowOnboarding == true)
+{
+    <div style="background:var(--lvl);border:1px solid var(--bda);border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div>
+            <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:3px">Set up your profile to personalise your dashboard</div>
+            <div style="font-size:12px;color:var(--txm)">Select your user type, sector, and compliance requirements. Takes 60 seconds.</div>
+        </div>
+        <a href="/Onboarding" class="btn-primary" style="white-space:nowrap">Set up profile →</a>
+    </div>
+}
+
 <div class="mb-6" style="display:flex;align-items:center;justify-content:space-between">
     <div>
-        <h1 class="page-title">Dashboard</h1>
-        <p class="page-sub">Scope 3 Category 6 & 7 — current reporting period</p>
+        <h1 class="page-title">
+            @if (isConsultant)     { <text>Client Overview</text> }
+            else if (isGovt)       { <text>CRP Dashboard</text>   }
+            else                   { <text>Dashboard</text>       }
+        </h1>
+        <p class="page-sub">
+            @if (org != null && org.OnboardingComplete)
+            {
+                <text>@org.UserTypeLabel · @(org.Sector ?? "All sectors") · Scope 3 Category 6 &amp; 7</text>
+            }
+            else
+            {
+                <text>Scope 3 Category 6 &amp; 7 — current reporting period</text>
+            }
+        </p>
     </div>
-    <a href="/Trip/LogTrip" class="btn-primary">+ Log trip</a>
+    <div style="display:flex;gap:8px">
+        @if (isConsultant)
+        {
+            <a href="/Clients" class="btn-primary">Manage clients →</a>
+        }
+        else
+        {
+            <a href="/Trip/LogTrip" class="btn-primary">+ Log trip</a>
+        }
+    </div>
 </div>
+
+@* Consultant mode: client summary strip *@
+@if (isConsultant)
+{
+    <div class="info-box mb-6">
+        <strong>Consultant view.</strong> You are managing emissions data on behalf of client organisations.
+        Use the <a href="/Clients" style="color:var(--tx)">Clients</a> page to manage organisations,
+        <a href="/Upload" style="color:var(--tx)">Upload</a> to bulk-import client travel data,
+        and <a href="/Reports" style="color:var(--tx)">Reports</a> to generate audit-ready documents.
+    </div>
+}
+
+@* Government mode: CRP status bar *@
+@if (isGovt)
+{
+    <div style="background:var(--lvl);border:1px solid var(--bda);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div style="font-size:12px;color:var(--lv)"><strong style="color:var(--tx)">PPN 06/21 status:</strong> Scope 3 Cat 6 data is being tracked. <a href="/Reports" style="color:var(--lv)">Generate CRP section →</a></div>
+        <div style="display:flex;gap:8px">
+            <span style="background:rgba(92,122,90,0.2);border:1px solid rgba(92,122,90,0.3);color:#8aac87;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600">✓ Audit trail active</span>
+            <span style="background:rgba(92,122,90,0.2);border:1px solid rgba(92,122,90,0.3);color:#8aac87;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600">✓ DEFRA factors applied</span>
+        </div>
+    </div>
+}
 
 <!-- HERO -->
 <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:28px 32px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden" class="mb-6">
@@ -65,6 +124,42 @@
         <div class="stat-bar"><div class="stat-fill" style="width:40%;background:rgba(255,255,255,0.2)"></div></div>
     </div>
 </div>
+
+@* Intensity metrics row — shown when org has employee/turnover data *@
+@if (ViewBag.IntensityPerEmployee != null || ViewBag.IntensityPerMGBP != null)
+{
+    <div class="grid-2 mb-6">
+        @if (ViewBag.IntensityPerEmployee != null)
+        {
+            <div class="stat-card" style="border-color:var(--bda)">
+                <div class="stat-label">tCO₂e per employee</div>
+                <div class="stat-val" style="color:var(--lv)">@ViewBag.IntensityPerEmployee</div>
+                <div class="stat-sub">intensity metric (SECR)</div>
+            </div>
+        }
+        @if (ViewBag.IntensityPerMGBP != null)
+        {
+            <div class="stat-card" style="border-color:var(--bda)">
+                <div class="stat-label">tCO₂e per £m turnover</div>
+                <div class="stat-val" style="color:var(--lv)">@ViewBag.IntensityPerMGBP</div>
+                <div class="stat-sub">intensity metric (SECR)</div>
+            </div>
+        }
+    </div>
+}
+
+@* Gas breakdown — shown when DESNZ-uploaded data exists *@
+@if ((double)(ViewBag.TotalKgCO2 ?? 0) > 0)
+{
+    <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <div class="section-title" style="margin-bottom:12px">Gas breakdown (DESNZ WTW)</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+            <div><div style="font-size:10px;color:var(--txm);margin-bottom:3px">CO₂</div><div style="font-size:18px;font-weight:600;font-family:monospace">@(((double)ViewBag.TotalKgCO2).ToString("N2")) kg</div></div>
+            <div><div style="font-size:10px;color:var(--txm);margin-bottom:3px">CH₄</div><div style="font-size:18px;font-weight:600;font-family:monospace">@(((double)ViewBag.TotalKgCH4).ToString("N4")) kg</div></div>
+            <div><div style="font-size:10px;color:var(--txm);margin-bottom:3px">N₂O</div><div style="font-size:18px;font-weight:600;font-family:monospace">@(((double)ViewBag.TotalKgN2O).ToString("N4")) kg</div></div>
+        </div>
+    </div>
+}
 
 <!-- CHART + COMPLIANCE -->
 <div style="display:grid;grid-template-columns:1fr 220px;gap:16px;margin-bottom:20px">

@@ -1,0 +1,69 @@
+@{
+    ViewData["Title"] = "Data Management";
+    Layout = "_Layout";
+}
+
+@if (ViewBag.Success != null)
+{
+    <div style="background:rgba(92,122,90,0.15);border:1px solid rgba(92,122,90,0.3);border-radius:8px;padding:14px;margin-bottom:20px;color:#8aac87;font-size:13px;">✓ @ViewBag.Success</div>
+}
+@if (ViewBag.Error != null)
+{
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-bottom:20px;color:#fca5a5;font-size:13px;"><strong>Error:</strong> @ViewBag.Error</div>
+}
+
+<div style="margin-bottom:28px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="width:3px;height:32px;background:rgba(239,68,68,0.6);border-radius:2px"></div>
+        <h1 class="page-title" style="margin:0">Data Management</h1>
+    </div>
+    <p style="font-size:13px;color:var(--txm);margin-left:13px">Reset test data, clear trips, and manage your platform profile.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+    <div class="stat-card"><div class="stat-label">Trip records</div><div class="stat-val" style="color:var(--lv)">@ViewBag.TripCount</div><div class="stat-sub">in the database</div></div>
+    <div class="stat-card"><div class="stat-label">Organisations</div><div class="stat-val">@ViewBag.OrgCount</div><div class="stat-sub">registered</div></div>
+</div>
+
+<!-- How to test -->
+<div class="card card-p" style="margin-bottom:16px">
+    <div class="section-title">How to test the platform</div>
+    <div style="display:flex;flex-direction:column;gap:14px;font-size:13px;color:var(--txm)">
+        <div style="display:flex;gap:12px"><span style="background:var(--lvl);color:var(--lv);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">1</span><div><strong style="color:var(--tx)">Complete onboarding</strong> — go to <a href="/Onboarding" style="color:var(--lv)">Profile Setup</a>, select your user type (Consultant / Corporate / SME / Government), your sector, and the compliance frameworks that apply. This personalises your dashboard.</div></div>
+        <div style="display:flex;gap:12px"><span style="background:var(--lvl);color:var(--lv);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">2</span><div><strong style="color:var(--tx)">Upload sample data</strong> — go to <a href="/Upload" style="color:var(--lv)">Upload</a> and drop in a CSV or Excel with columns: <code style="font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:3px">Date Out, Journey, Mode, Miles, People</code>. The system will parse, classify, and calculate automatically.</div></div>
+        <div style="display:flex;gap:12px"><span style="background:var(--lvl);color:var(--lv);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">3</span><div><strong style="color:var(--tx)">Log a single trip</strong> — go to <a href="/Trip/LogTrip" style="color:var(--lv)">Log Trip</a>, type any city into the origin and destination fields (Google Places autocomplete), pick a transport mode, and submit. The map shows the route and calculates emissions live.</div></div>
+        <div style="display:flex;gap:12px"><span style="background:var(--lvl);color:var(--lv);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">4</span><div><strong style="color:var(--tx)">View the dashboard</strong> — your <a href="/Dashboard" style="color:var(--lv)">Dashboard</a> shows profile-specific stats. Consultants see a client-management view. Corporate/SME see SECR-focused KPIs. Government sees CRP readiness.</div></div>
+        <div style="display:flex;gap:12px"><span style="background:var(--lvl);color:var(--lv);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">5</span><div><strong style="color:var(--tx)">Generate the audit report</strong> — go to <a href="/Reports" style="color:var(--lv)">Reports</a> and click "Print audit PDF". The print layout is a full SECR/PPN 06/21-ready document with methodology, Top 10 trips, sample calculation, and CRP section.</div></div>
+        <div style="display:flex;gap:12px"><span style="background:var(--lvl);color:var(--lv);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">6</span><div><strong style="color:var(--tx)">Clear test data</strong> — use the "Clear all trips" form below, then re-upload your real data. This page will always be at <code style="font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:3px">/Admin</code>.</div></div>
+    </div>
+</div>
+
+<!-- Clear trips -->
+<div class="card card-p" style="border-color:rgba(239,68,68,0.2);margin-bottom:16px">
+    <div class="section-title" style="color:#fca5a5">Clear all trip records</div>
+    <p style="font-size:12px;color:var(--txm);margin-bottom:16px">
+        Deletes every trip in the database permanently. Use this to remove test data before uploading real data.
+        Organisation profiles and settings are not affected.
+    </p>
+    <form method="post" asp-action="ClearTrips" asp-controller="Admin">
+        @Html.AntiForgeryToken()
+        <div class="fg" style="margin-bottom:12px">
+            <label>Type <strong style="color:#fca5a5">DELETE ALL TRIPS</strong> to confirm</label>
+            <input type="text" name="confirm" placeholder="DELETE ALL TRIPS" style="border-color:rgba(239,68,68,0.3)">
+        </div>
+        <button type="submit" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">Delete all trips</button>
+    </form>
+</div>
+
+<!-- Reset onboarding -->
+<div class="card card-p" style="border-color:rgba(197,180,227,0.2)">
+    <div class="section-title" style="color:var(--lv)">Reset onboarding / profile</div>
+    <p style="font-size:12px;color:var(--txm);margin-bottom:16px">
+        Clears your user type, sector, and compliance selections. The dashboard will show the onboarding prompt again.
+        Trip data is not affected.
+    </p>
+    <form method="post" asp-action="ResetOnboarding" asp-controller="Admin">
+        @Html.AntiForgeryToken()
+        <button type="submit" style="background:var(--lvl);border:1px solid var(--bda);color:var(--lv);border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">Reset profile &amp; onboarding</button>
+    </form>
+</div>
