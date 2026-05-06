@@ -1,0 +1,159 @@
+@using CarbonTrack.Models
+@{
+    ViewData["Title"] = "Team";
+    var members = ViewBag.MembersWithRoles as List<(ApplicationUser User, IList<string> Roles)> ?? new();
+    var invites = ViewBag.Invites as List<Invite> ?? new();
+    var org     = ViewBag.Org as Organisation;
+    var baseUrl = ViewBag.BaseUrl as string ?? "";
+}
+
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24px">
+  <div>
+    <h1 class="page-title">Team</h1>
+    <p class="page-sub">Manage members and invites for @(org?.Name ?? "your organisation")</p>
+  </div>
+</div>
+
+@if (ViewBag.Success != null)
+{
+  <div class="info-box" style="margin-bottom:20px">@ViewBag.Success</div>
+}
+@if (ViewBag.Error != null)
+{
+  <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:14px 16px;font-size:13px;color:#fca5a5;margin-bottom:20px">@ViewBag.Error</div>
+}
+
+<div class="grid-2" style="gap:24px;align-items:start">
+
+  @* Left: members + pending invites *@
+  <div>
+    <div class="card">
+      <div class="card-p" style="border-bottom:1px solid var(--bd)">
+        <div class="section-title" style="margin-bottom:0">Members</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach (var (user, roles) in members)
+          {
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:26px;height:26px;background:var(--sc);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">
+                    @(string.Concat((user.FullName ?? user.Email ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w[0])))
+                  </div>
+                  <span style="font-weight:500">@(user.FullName is { Length: > 0 } fn ? fn : "–")</span>
+                </div>
+              </td>
+              <td style="color:var(--txm)">@user.Email</td>
+              <td>
+                @foreach (var role in roles)
+                {
+                  <span class="@(role == "Admin" ? "lv-badge" : "ok-badge")" style="margin-right:4px">@role</span>
+                }
+              </td>
+            </tr>
+          }
+          @if (!members.Any())
+          {
+            <tr><td colspan="3" style="color:var(--txs);text-align:center;padding:24px">No members yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (invites.Any())
+    {
+      <div class="card" style="margin-top:16px">
+        <div class="card-p" style="border-bottom:1px solid var(--bd)">
+          <div class="section-title" style="margin-bottom:0">Pending invites</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Expires</th>
+              <th>Link</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach (var inv in invites)
+            {
+              var expired = inv.ExpiresAt < DateTime.UtcNow || inv.Used;
+              var link    = $"{baseUrl}/Account/AcceptInvite?token={inv.Token}";
+              <tr style="@(expired ? "opacity:0.4" : "")">
+                <td>@inv.Email</td>
+                <td><span class="@(inv.Role == "Admin" ? "lv-badge" : "ok-badge")">@inv.Role</span></td>
+                <td style="color:var(--txs);font-size:11px">
+                  @(inv.Used ? "Used" : expired ? "Expired" : inv.ExpiresAt.ToString("dd MMM yyyy"))
+                </td>
+                <td>
+                  @if (!expired)
+                  {
+                    <button type="button"
+                            onclick="copyLink(this, '@link')"
+                            style="background:var(--scl);color:#8aac87;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif">
+                      Copy
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  @* Right: create invite form *@
+  <div>
+    <div class="form-card">
+      <div class="section-title">Invite a team member</div>
+      <p style="font-size:12px;color:var(--txm);margin-bottom:20px;line-height:1.6">
+        Generate an invite link to share. The link expires in 7 days.
+      </p>
+      <form method="post" asp-action="CreateInvite" asp-controller="Account">
+        @Html.AntiForgeryToken()
+        <div class="fg">
+          <label>Email address</label>
+          <input type="email" name="email" placeholder="colleague@company.co.uk" required autocomplete="off" />
+        </div>
+        <div class="fg">
+          <label>Role</label>
+          <select name="role">
+            <option value="Employee">Employee — logs own trips</option>
+            <option value="Admin">Admin — full access</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-submit">Generate invite link</button>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:16px;padding:18px 20px">
+      <div class="section-title">Roles explained</div>
+      <div style="font-size:12px;color:var(--txm);line-height:1.8">
+        <div><span class="lv-badge" style="margin-right:6px">Admin</span>Full access — dashboard, reports, uploads, team management</div>
+        <div style="margin-top:8px"><span class="ok-badge" style="margin-right:6px">Employee</span>Log and view own trips only</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function copyLink(btn, url) {
+  navigator.clipboard.writeText(url).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.style.background = 'var(--scl)';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+</script>

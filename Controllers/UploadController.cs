@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
@@ -6,9 +8,11 @@ using System.Globalization;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize(Roles = "Admin,Consultant")]
     public class UploadController : Controller
     {
         private readonly CarbonTrackContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<UploadController> _logger;
 
         // ── Column header → canonical field ───────────────────────────────────
@@ -29,9 +33,10 @@ namespace CarbonTrack.Controllers
             (new[]{ "class","cabin","seat" },                                                 "class"),
         };
 
-        public UploadController(CarbonTrackContext context, ILogger<UploadController> logger)
+        public UploadController(CarbonTrackContext context, UserManager<ApplicationUser> userManager, ILogger<UploadController> logger)
         {
             _context = context;
+            _userManager = userManager;
             _logger  = logger;
         }
 
@@ -111,6 +116,9 @@ namespace CarbonTrack.Controllers
             if (req?.Rows == null || req.Rows.Count == 0)
                 return Json(new { success = false, error = "No rows to import." });
 
+            var currentUser = await _userManager.GetUserAsync(User);
+            var orgId = currentUser?.OrganisationId ?? 0;
+
             try
             {
                 var trips = new List<Trip>();
@@ -168,7 +176,8 @@ namespace CarbonTrack.Controllers
                         DefraFactorYear     = "DESNZ 2024 WTW",
                         Formula             = formula,
                         CreatedAt           = DateTime.UtcNow,
-                        OrganisationId      = 1,
+                        OrganisationId      = orgId,
+                        UserId              = currentUser?.Id,
                     });
                 }
 

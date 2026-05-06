@@ -1,29 +1,36 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
         private readonly CarbonTrackContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<AdminController> _logger;
 
-        public AdminController(CarbonTrackContext context, ILogger<AdminController> logger)
+        public AdminController(CarbonTrackContext context, UserManager<ApplicationUser> userManager, ILogger<AdminController> logger)
         {
             _context = context;
+            _userManager = userManager;
             _logger  = logger;
         }
 
         // GET /Admin — data management panel
         public async Task<IActionResult> Index()
         {
-            ViewBag.TripCount = await _context.Trips.CountAsync();
+            var currentUser = await _userManager.GetUserAsync(User);
+            var orgId = currentUser?.OrganisationId ?? 0;
+            ViewBag.TripCount = await _context.Trips.CountAsync(t => t.OrganisationId == orgId);
             ViewBag.OrgCount  = await _context.Organisations.CountAsync();
             return View();
         }
 
-        // POST /Admin/ClearTrips — delete ALL trip records
+        // POST /Admin/ClearTrips — delete trip records for this org
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ClearTrips(string confirm)
@@ -36,9 +43,11 @@ namespace CarbonTrack.Controllers
 
             try
             {
-                int count = await _context.Trips.CountAsync();
-                await _context.Database.ExecuteSqlRawAsync("DELETE FROM Trips");
-                _logger.LogWarning("All trips deleted by admin — {Count} records removed", count);
+                var currentUser = await _userManager.GetUserAsync(User);
+                var orgId = currentUser?.OrganisationId ?? 0;
+                int count = await _context.Trips.CountAsync(t => t.OrganisationId == orgId);
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM Trips WHERE OrganisationId = {0}", orgId);
+                _logger.LogWarning("All trips deleted by admin for org {OrgId} — {Count} records removed", orgId, count);
                 TempData["Success"] = $"Cleared {count} trip records. Database is now empty.";
             }
             catch (Exception ex)
@@ -57,7 +66,9 @@ namespace CarbonTrack.Controllers
         {
             try
             {
-                var org = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1);
+                var currentUser = await _userManager.GetUserAsync(User);
+                var orgId = currentUser?.OrganisationId ?? 0;
+                var org = await _context.Organisations.FindAsync(orgId);
                 if (org != null)
                 {
                     org.UserType           = null;

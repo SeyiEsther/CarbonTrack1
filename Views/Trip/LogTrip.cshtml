@@ -251,6 +251,8 @@
         'Car-Petrol': 0.168330, 'Car-Diesel': 0.163050, 'Car-Hybrid': 0.106850, 'Car-Electric': 0.052690,
         'Taxi': 0.149780, 'Ferry-Foot': 0.018820, 'Ferry-Car': 0.128860
     };
+    // Vehicle-km modes: DEFRA factors are per vehicle-km so no passenger multiplier
+    const VEHICLE_KM = new Set(['Car-Petrol','Car-Diesel','Car-Hybrid','Car-Electric','Taxi','Ferry-Car']);
 
     // State: each city is { name, lat, lng } once selected via Places
     let state = { origin: null, dest: null, retOrigin: null, retDest: null, isReturn: false, diffRoute: false };
@@ -405,16 +407,22 @@
     function updatePreview() {
         if (!state.origin || !state.dest) return;
 
-        const dist = haversine(state.origin, state.dest);
-        const ef   = EF[document.getElementById('mode').value] || 0;
-        const pax  = Math.max(1, parseInt(document.getElementById('passengers').value) || 1);
-        const outKg = Math.round(dist * ef * pax);
+        const dist    = haversine(state.origin, state.dest);
+        const mode    = document.getElementById('mode').value;
+        const ef      = EF[mode] || 0;
+        const pax     = Math.max(1, parseInt(document.getElementById('passengers').value) || 1);
+        const outKg   = VEHICLE_KM.has(mode)
+            ? Math.round(dist * ef)
+            : Math.round(dist * ef * pax);
 
         let retKg = 0, retDist = 0;
         if (state.isReturn) {
             if (state.diffRoute && state.retOrigin && state.retDest) {
                 retDist = haversine(state.retOrigin, state.retDest);
-                retKg   = Math.round(retDist * (EF[document.getElementById('ret-mode').value] || 0) * pax);
+                const retMode = document.getElementById('ret-mode').value;
+                retKg   = VEHICLE_KM.has(retMode)
+                    ? Math.round(retDist * (EF[retMode] || 0))
+                    : Math.round(retDist * (EF[retMode] || 0) * pax);
             } else {
                 retDist = dist;
                 retKg   = outKg;

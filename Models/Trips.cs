@@ -8,16 +8,16 @@ namespace CarbonTrack.Models
         public int Id { get; set; }
 
         [Required]
-        public string Origin { get; set; }
+        public string Origin { get; set; } = "";
 
         [Required]
-        public string Destination { get; set; }
+        public string Destination { get; set; } = "";
 
         [Required]
         public DateTime TripDate { get; set; }
 
         [Required]
-        public string TransportMode { get; set; }
+        public string TransportMode { get; set; } = "";
 
         public string? TravelClass { get; set; }
 
@@ -47,5 +47,12 @@ namespace CarbonTrack.Models
 
         [ForeignKey("OrganisationId")]
         public Organisation? Organisation { get; set; }
+
+        // Nullable: populated for new trips logged by authenticated users;
+        // null for trips imported before auth was introduced.
+        public string? UserId { get; set; }
+
+        [ForeignKey("UserId")]
+        public ApplicationUser? User { get; set; }
     }
 }

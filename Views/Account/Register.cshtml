@@ -1,0 +1,102 @@
+@model CarbonTrack.Models.RegisterViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Create account — CarbonTrack";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@ViewData["Title"]</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',sans-serif}
+body{background:linear-gradient(145deg,#2a1228 0%,#3A1C36 40%,#4d2e52 60%,#374126 100%);display:flex;align-items:center;justify-content:center;min-height:100vh;position:relative;padding:24px}
+.orb{position:absolute;border-radius:50%;pointer-events:none}
+.orb1{width:550px;height:550px;top:-20%;right:-10%;background:radial-gradient(ellipse,rgba(155,113,178,0.35) 0%,transparent 65%)}
+.orb2{width:450px;height:450px;bottom:-20%;left:-8%;background:radial-gradient(ellipse,rgba(108,109,17,0.25) 0%,transparent 65%)}
+.card{position:relative;z-index:1;width:420px;background:rgba(255,255,255,0.07);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.13);border-radius:28px;padding:44px 38px;box-shadow:0 40px 80px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.18)}
+.logo{display:flex;align-items:center;gap:7px;margin-bottom:28px}
+.logo-dot{width:7px;height:7px;background:#E3D0EA;border-radius:50%}
+.logo-name{font-family:'DM Serif Display',serif;font-size:16px;color:rgba(255,255,255,0.8)}
+.card-title{font-family:'DM Serif Display',serif;font-size:32px;color:#fff;line-height:1.1;margin-bottom:8px}
+.card-sub{font-size:13px;color:rgba(255,255,255,0.35);margin-bottom:28px}
+.error-box{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#fca5a5}
+.field{margin-bottom:12px}
+.field-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.25);margin-bottom:5px;display:block}
+.field-inner{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:10px;transition:all .2s}
+.field-inner:focus-within{background:rgba(255,255,255,0.11);border-color:rgba(227,208,234,0.3);box-shadow:0 0 0 3px rgba(155,113,178,0.1)}
+.field-input{flex:1;background:none;border:none;outline:none;font-size:14px;color:#fff;font-family:'DM Sans',sans-serif;font-weight:300}
+.field-input::placeholder{color:rgba(255,255,255,0.2)}
+.divider{border:none;border-top:1px solid rgba(255,255,255,0.08);margin:16px 0}
+.btn{width:100%;margin-top:16px;background:rgba(227,208,234,0.9);color:#3A1C36;border:none;border-radius:14px;padding:15px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.btn:hover{background:#fff;transform:translateY(-1px);box-shadow:0 10px 30px rgba(0,0,0,0.25)}
+.login-link{display:block;text-align:center;margin-top:16px;font-size:12px;color:rgba(255,255,255,0.3);text-decoration:none}
+.login-link span{color:rgba(227,208,234,0.7);text-decoration:underline}
+.section-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.2);margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="card">
+  <div class="logo"><div class="logo-dot"></div><span class="logo-name">CarbonTrack</span></div>
+  <h1 class="card-title">Create your account.</h1>
+  <p class="card-sub">You'll be the admin for your organisation.</p>
+
+  @if (!ViewData.ModelState.IsValid)
+  {
+    <div class="error-box">
+      @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+      { <div>@e.ErrorMessage</div> }
+    </div>
+  }
+
+  <form method="post" asp-action="Register" asp-controller="Account">
+    @Html.AntiForgeryToken()
+
+    <div class="section-label">Your details</div>
+    <div class="field">
+      <label class="field-label">Full name</label>
+      <div class="field-inner">
+        <input class="field-input" type="text" name="FullName" placeholder="Seyi Okonkwo" value="@Model?.FullName" required autocomplete="name" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Work email</label>
+      <div class="field-inner">
+        <input class="field-input" type="email" name="Email" placeholder="you@company.co.uk" value="@Model?.Email" required autocomplete="email" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Password (min 8 characters)</label>
+      <div class="field-inner">
+        <input class="field-input" type="password" name="Password" placeholder="••••••••" required autocomplete="new-password" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Confirm password</label>
+      <div class="field-inner">
+        <input class="field-input" type="password" name="ConfirmPassword" placeholder="••••••••" required autocomplete="new-password" />
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="section-label">Organisation</div>
+    <div class="field">
+      <label class="field-label">Organisation name</label>
+      <div class="field-inner">
+        <input class="field-input" type="text" name="OrgName" placeholder="Acme Consulting Ltd" value="@Model?.OrgName" required />
+      </div>
+    </div>
+
+    <button type="submit" class="btn">Create account →</button>
+  </form>
+
+  <a href="/Account/Login" class="login-link">Already have an account? <span>Sign in</span></a>
+</div>
+</body>
+</html>
