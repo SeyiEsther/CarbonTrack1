@@ -120,8 +120,8 @@ tr:hover td{background:rgba(255,255,255,0.03)}
       <a href="/Dashboard" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")">Dashboard</a>
       <a href="/Trip/LogTrip" class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "LogTrip" ? "active" : "")">Log Trip</a>
       <a href="/Trip" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Trip" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">Trip Log</a>
-      <a href="#" class="nav-link">Reports</a>
-      <a href="#" class="nav-link">Clients</a>
+      <a href="/Reports" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" ? "active" : "")">Reports</a>
+      <a href="/Clients" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Clients" ? "active" : "")">Clients</a>
     </div>
     <div class="nav-right">
       <div class="defra-pill"><div class="defra-dot"></div>DEFRA 2025</div>

@@ -1,0 +1,223 @@
+@model IEnumerable<CarbonTrack.Models.Trip>
+@using CarbonTrack.Controllers
+
+@{
+    ViewData["Title"] = "Reports";
+    Layout = "_Layout";
+    var trips = Model ?? Enumerable.Empty<CarbonTrack.Models.Trip>();
+}
+
+@if (ViewBag.Success != null)
+{
+    <div style="background:rgba(92,122,90,0.15);border:1px solid rgba(92,122,90,0.3);border-radius:8px;padding:14px;margin-bottom:20px;color:#8aac87;font-size:13px;">✓ @ViewBag.Success</div>
+}
+@if (ViewBag.Error != null)
+{
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-bottom:20px;color:#fca5a5;font-size:13px;"><strong>Error:</strong> @ViewBag.Error</div>
+}
+
+<!-- Header -->
+<div class="mb-6" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="page-title">Reports</h1>
+        <p class="page-sub">DEFRA 2025 · Scope 3 Category 6 & 7 audit export</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="/Reports/ExportCsv" class="btn-export" style="background:var(--scl);color:#8aac87;border:1px solid rgba(92,122,90,0.3)">
+            ↓ Export CSV
+        </a>
+        <a href="/Reports/ExportExcel" class="btn-export" style="background:var(--lvl);color:var(--lv);border:1px solid var(--bda)">
+            ↓ Export Excel
+        </a>
+        <button onclick="window.print()" class="btn-export" style="background:rgba(255,255,255,0.05);color:var(--txm);border:1px solid var(--bd)">
+            ⎙ Print
+        </button>
+    </div>
+</div>
+
+<style>
+    .btn-export { padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;font-family:'DM Sans',sans-serif;transition:opacity .15s; }
+    .btn-export:hover { opacity:.75; }
+    @@media print {
+        .nav, .btn-export, .no-print { display:none !important; }
+        .page { padding:0 !important; }
+        body { background:#fff !important; color:#000 !important; }
+        .card { border:1px solid #ddd !important; background:#fff !important; }
+        th, td { color:#000 !important; }
+    }
+</style>
+
+<!-- Hero stats -->
+<div style="background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:28px 32px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(ellipse,rgba(197,180,227,0.05) 0%,transparent 70%)"></div>
+    <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--txm);margin-bottom:8px">Total Scope 3 Category 6 & 7</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:56px;color:var(--tx);line-height:1;margin-bottom:4px">@ViewBag.TotalTCO2e</div>
+        <div style="font-size:13px;color:var(--txm)">tCO₂e · all time · DEFRA 2025</div>
+    </div>
+    <div style="display:flex;gap:32px">
+        <div style="text-align:right">
+            <div style="font-size:10px;color:var(--txm);margin-bottom:4px">Total trips</div>
+            <div style="font-size:24px;font-weight:600;color:var(--lv)">@ViewBag.TotalTrips</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:10px;color:var(--txm);margin-bottom:4px">Total distance</div>
+            <div style="font-size:24px;font-weight:600;color:var(--lv)">@(((double)ViewBag.TotalKm).ToString("N0")) km</div>
+        </div>
+    </div>
+</div>
+
+<!-- Mode breakdown + Top routes -->
+<div class="grid-2 mb-6">
+
+    <!-- By transport mode -->
+    <div class="card">
+        <div class="card-p" style="border-bottom:1px solid var(--bd);padding-bottom:14px;margin-bottom:0">
+            <span class="section-title" style="margin:0">Emissions by mode</span>
+        </div>
+        @if (ViewBag.ModeBreakdown != null)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mode</th>
+                        <th>Trips</th>
+                        <th>km</th>
+                        <th>kgCO₂e</th>
+                        <th>tCO₂e</th>
+                        <th>EF</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (ModeRow row in ViewBag.ModeBreakdown)
+                    {
+                        <tr>
+                            <td>
+                                <span class="tag @(row.Mode.StartsWith("Flight") ? "tag-flight" : row.Mode.StartsWith("Train") ? "tag-train" : "tag-car")">
+                                    @row.Mode
+                                </span>
+                            </td>
+                            <td class="mono">@row.Count</td>
+                            <td class="mono">@row.TotalKm.ToString("N1")</td>
+                            <td class="co2">@row.TotalKg.ToString("N2")</td>
+                            <td class="mono">@row.TotalT</td>
+                            <td class="mono">@row.AvgFactor</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <!-- Top routes -->
+    <div class="card">
+        <div class="card-p" style="border-bottom:1px solid var(--bd);padding-bottom:14px;margin-bottom:0">
+            <span class="section-title" style="margin:0">Top routes by emissions</span>
+        </div>
+        @if (ViewBag.TopRoutes != null)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Route</th>
+                        <th>Trips</th>
+                        <th>kgCO₂e</th>
+                        <th>tCO₂e</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (RouteRow row in ViewBag.TopRoutes)
+                    {
+                        <tr>
+                            <td><strong>@row.Route</strong></td>
+                            <td class="mono">@row.Count</td>
+                            <td class="co2">@row.TotalKg.ToString("N2")</td>
+                            <td class="mono">@row.TotalT</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            if (!((IEnumerable<RouteRow>)ViewBag.TopRoutes).Any())
+            {
+                <div style="text-align:center;padding:40px;color:var(--txm);font-size:13px">No trips logged yet.</div>
+            }
+        }
+    </div>
+
+</div>
+
+<!-- Mode stat pills -->
+<div class="grid-3 mb-6">
+    <div class="stat-card">
+        <div class="stat-label">Flight emissions</div>
+        <div class="stat-val">@ViewBag.FlightTCO2e</div>
+        <div class="stat-sub">tCO₂e — Haversine GC distance</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:@(ViewBag.TotalTCO2e > 0 ? Math.Round((double)ViewBag.FlightTCO2e / (double)ViewBag.TotalTCO2e * 100, 0) : 0)%;background:var(--lv)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Rail emissions</div>
+        <div class="stat-val">@ViewBag.TrainTCO2e</div>
+        <div class="stat-sub">tCO₂e — Maps Distance Matrix</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:@(ViewBag.TotalTCO2e > 0 ? Math.Round((double)ViewBag.TrainTCO2e / (double)ViewBag.TotalTCO2e * 100, 0) : 0)%;background:var(--sc)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Car / Taxi / Ferry</div>
+        <div class="stat-val">@ViewBag.CarTCO2e</div>
+        <div class="stat-sub">tCO₂e — Maps Distance Matrix</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:@(ViewBag.TotalTCO2e > 0 ? Math.Round((double)ViewBag.CarTCO2e / (double)ViewBag.TotalTCO2e * 100, 0) : 0)%;background:rgba(255,255,255,0.2)"></div></div>
+    </div>
+</div>
+
+<!-- Full audit table -->
+<div class="card">
+    <div class="card-p" style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);padding-bottom:16px;margin-bottom:0">
+        <span class="section-title" style="margin:0">Full audit trail — all trips</span>
+        <span class="lv-badge">DEFRA 2025 ✓</span>
+    </div>
+
+    @if (!trips.Any())
+    {
+        <div style="text-align:center;padding:60px;color:var(--txm)">
+            <p style="font-size:16px;margin-bottom:8px">No trips logged yet</p>
+            <a href="/Trip/LogTrip" class="btn-primary no-print">Log first trip</a>
+        </div>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Route</th>
+                    <th>Mode</th>
+                    <th>Pax</th>
+                    <th>Distance (km)</th>
+                    <th>EF (DEFRA 2025)</th>
+                    <th>Formula</th>
+                    <th>kgCO₂e</th>
+                    <th>Methodology</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in trips)
+                {
+                    <tr>
+                        <td style="color:var(--txm)">@t.TripDate.ToString("dd MMM yyyy")</td>
+                        <td><strong>@t.Origin → @t.Destination</strong></td>
+                        <td>
+                            <span class="tag @(t.TransportMode.StartsWith("Flight") ? "tag-flight" : t.TransportMode.StartsWith("Train") ? "tag-train" : "tag-car")">
+                                @t.TransportMode
+                            </span>
+                        </td>
+                        <td class="mono">@t.Passengers</td>
+                        <td class="mono">@t.DistanceKm.ToString("N2")</td>
+                        <td class="mono">@t.EmissionFactor</td>
+                        <td class="mono" style="font-size:10px">@t.Formula</td>
+                        <td class="co2">@t.KgCO2e.ToString("N2")</td>
+                        <td><span class="ok-badge">@t.DistanceMethodology</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

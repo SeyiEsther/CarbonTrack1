@@ -1,0 +1,133 @@
+@model IEnumerable<CarbonTrack.Controllers.ClientRow>
+
+@{
+    ViewData["Title"] = "Clients";
+    Layout = "_Layout";
+    var rows = Model ?? Enumerable.Empty<CarbonTrack.Controllers.ClientRow>();
+}
+
+@if (ViewBag.Success != null)
+{
+    <div style="background:rgba(92,122,90,0.15);border:1px solid rgba(92,122,90,0.3);border-radius:8px;padding:14px;margin-bottom:20px;color:#8aac87;font-size:13px;">✓ @ViewBag.Success</div>
+}
+@if (ViewBag.Error != null)
+{
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-bottom:20px;color:#fca5a5;font-size:13px;"><strong>Error:</strong> @ViewBag.Error</div>
+}
+
+<div class="mb-6" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+        <h1 class="page-title">Clients</h1>
+        <p class="page-sub">Manage organisations and their carbon footprint</p>
+    </div>
+    <button onclick="document.getElementById('add-modal').style.display='flex'" class="btn-primary">+ Add client</button>
+</div>
+
+<!-- Summary pills -->
+<div class="grid-3 mb-6">
+    <div class="stat-card">
+        <div class="stat-label">Total clients</div>
+        <div class="stat-val">@rows.Count()</div>
+        <div class="stat-sub">organisations</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:100%;background:var(--sc)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total trips</div>
+        <div class="stat-val">@rows.Sum(r => r.TripCount)</div>
+        <div class="stat-sub">across all clients</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:70%;background:var(--lv)"></div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total emissions</div>
+        <div class="stat-val">@Math.Round(rows.Sum(r => r.TotalTCO2e), 2)</div>
+        <div class="stat-sub">tCO₂e across all clients</div>
+        <div class="stat-bar"><div class="stat-fill" style="width:60%;background:var(--lv)"></div></div>
+    </div>
+</div>
+
+<!-- Client cards -->
+@if (!rows.Any())
+{
+    <div class="card card-p" style="text-align:center;padding:60px">
+        <p style="font-size:16px;margin-bottom:8px;color:var(--txm)">No clients yet</p>
+        <p style="font-size:13px;color:var(--txm);margin-bottom:20px">Add your first organisation to get started</p>
+        <button onclick="document.getElementById('add-modal').style.display='flex'" class="btn-primary">+ Add client</button>
+    </div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:24px">
+        @foreach (var row in rows)
+        {
+            <div class="card card-p" style="position:relative">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+                    <div>
+                        <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:3px">@row.Org.Name</div>
+                        <div style="font-size:11px;color:var(--txm)">@(string.IsNullOrWhiteSpace(row.Org.ContactEmail) ? "No email" : row.Org.ContactEmail)</div>
+                    </div>
+                    <span class="lv-badge" style="flex-shrink:0">@row.Org.Plan</span>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+                    <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:18px;font-weight:600;color:var(--tx)">@row.TripCount</div>
+                        <div style="font-size:9px;color:var(--txm);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Trips</div>
+                    </div>
+                    <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:18px;font-weight:600;color:var(--lv)">@row.TotalTCO2e</div>
+                        <div style="font-size:9px;color:var(--txm);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">tCO₂e</div>
+                    </div>
+                    <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:11px;font-weight:600;color:var(--tx)">@(row.LastTrip.HasValue ? row.LastTrip.Value.ToString("dd MMM yy") : "—")</div>
+                        <div style="font-size:9px;color:var(--txm);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Last trip</div>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--bd)">
+                    <span style="font-size:10px;color:var(--txm)">Since @row.Org.CreatedAt.ToString("MMM yyyy")</span>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <a href="/Trip?orgId=@row.Org.Id" style="font-size:11px;color:var(--lv);text-decoration:none;font-weight:600">View trips →</a>
+                        @if (row.Org.Id != 1)
+                        {
+                            <form method="post" asp-action="Delete" asp-controller="Clients" asp-route-id="@row.Org.Id"
+                                  onsubmit="return confirm('Delete @Html.Raw(row.Org.Name.Replace("'","\\'")))? This cannot be undone.');"
+                                  style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        style="background:none;border:none;color:rgba(239,68,68,0.4);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;padding:0;transition:color .15s"
+                                        onmouseover="this.style.color='rgba(239,68,68,1)'"
+                                        onmouseout="this.style.color='rgba(239,68,68,0.4)'">
+                                    Delete
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Add client modal -->
+<div id="add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center"
+     onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:var(--bg2);border:1px solid var(--bda);border-radius:16px;padding:32px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.4)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+            <h2 style="font-family:'DM Serif Display',serif;font-size:22px">Add client</h2>
+            <button onclick="document.getElementById('add-modal').style.display='none'"
+                    style="background:none;border:none;color:var(--txm);cursor:pointer;font-size:20px;line-height:1">×</button>
+        </div>
+        <form method="post" asp-action="Add" asp-controller="Clients">
+            @Html.AntiForgeryToken()
+            <div class="fg">
+                <label>Organisation name *</label>
+                <input type="text" name="name" placeholder="e.g. Acme Ltd" required maxlength="200" />
+            </div>
+            <div class="fg">
+                <label>Contact email</label>
+                <input type="email" name="email" placeholder="e.g. contact@acme.co.uk" maxlength="200" />
+            </div>
+            <button type="submit" class="btn-submit" style="margin-top:8px">Add client →</button>
+        </form>
+    </div>
+</div>
