@@ -1,0 +1,457 @@
+@{
+    ViewData["Title"] = "Upload Travel Data";
+    Layout = "_Layout";
+}
+
+@if (ViewBag.Success != null)
+{
+    <div style="background:rgba(92,122,90,0.15);border:1px solid rgba(92,122,90,0.3);border-radius:8px;padding:14px;margin-bottom:20px;color:#8aac87;font-size:13px;">✓ @ViewBag.Success</div>
+}
+@if (ViewBag.Error != null)
+{
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-bottom:20px;color:#fca5a5;font-size:13px;"><strong>Error:</strong> @ViewBag.Error</div>
+}
+
+<!-- Header -->
+<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap">
+    <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <div style="width:3px;height:32px;background:var(--sc);border-radius:2px"></div>
+            <h1 class="page-title" style="margin:0">Upload Travel Data</h1>
+        </div>
+        <p style="font-size:13px;color:var(--txm);margin-left:13px">
+            Import a full year of trips from Excel or CSV · DEFRA year auto-selected per row · audit-ready output
+        </p>
+    </div>
+    <a href="/Reports" class="btn-primary" style="white-space:nowrap">View reports →</a>
+</div>
+
+<!-- STEP 1 — Upload zone (visible until file parsed) -->
+<div id="step-upload">
+
+    <!-- Options row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="card card-p">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txm);margin-bottom:12px">Calculation options</div>
+            <label class="opt-row">
+                <input type="checkbox" id="opt-wtt">
+                <span>
+                    <strong style="font-size:12px">Include WTT (Well-to-Tank)</strong><br>
+                    <span style="font-size:11px;color:var(--txm)">Adds upstream fuel-production emissions per DEFRA WTT tables. Required for full lifecycle reporting.</span>
+                </span>
+            </label>
+            <label class="opt-row" style="margin-top:10px">
+                <input type="checkbox" id="opt-rfi">
+                <span>
+                    <strong style="font-size:12px">Apply Radiative Forcing (RFI) to flights</strong><br>
+                    <span style="font-size:11px;color:var(--txm)">Multiplies flight emissions × 1.891 for high-altitude effects. Not mandated by DEFRA 2025 but required by some clients.</span>
+                </span>
+            </label>
+        </div>
+
+        <div class="card card-p">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txm);margin-bottom:12px">Expected column names</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+                @foreach (var col in new[]{ "Date","From / Origin","To / Destination","Mode / Vehicle","Distance (km or miles)","Passengers","Class (optional)" })
+                {
+                    <span style="background:var(--bg3);border:1px solid var(--bd);border-radius:5px;padding:3px 8px;font-size:10px;font-family:monospace;color:var(--txm)">@col</span>
+                }
+            </div>
+            <p style="font-size:11px;color:var(--txs);margin-top:10px">Column names are matched loosely — partial matches and synonyms are handled automatically.</p>
+        </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div style="font-size:32px;margin-bottom:12px;opacity:.5">📂</div>
+        <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:6px">Drop your Excel or CSV file here</div>
+        <div style="font-size:12px;color:var(--txm);margin-bottom:16px">Supports .xlsx and .csv · max 10 MB</div>
+        <div class="btn-primary" style="display:inline-block;pointer-events:none">Choose file</div>
+        <input type="file" id="file-input" accept=".xlsx,.csv" style="display:none">
+    </div>
+
+    <!-- Parsing progress -->
+    <div id="parse-progress" style="display:none;text-align:center;padding:40px;color:var(--txm)">
+        <div class="upload-spinner"></div>
+        <div style="margin-top:12px;font-size:13px">Parsing file and calculating emissions…</div>
+    </div>
+
+    <!-- Error banner -->
+    <div id="parse-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;margin-top:16px;color:#fca5a5;font-size:13px"></div>
+
+</div><!-- end step-upload -->
+
+<!-- STEP 2 — Preview (hidden until parsed) -->
+<div id="step-preview" style="display:none">
+
+    <!-- Summary bar -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px" id="preview-summary">
+        <div class="stat-card">
+            <div class="stat-label">Total rows</div>
+            <div class="stat-val" id="sum-total">0</div>
+            <div class="stat-sub">in file</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(92,122,90,0.4)">
+            <div class="stat-label">Ready to import</div>
+            <div class="stat-val" id="sum-ready" style="color:#8aac87">0</div>
+            <div class="stat-sub">clean rows</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(197,180,227,0.3)">
+            <div class="stat-label">Needs review</div>
+            <div class="stat-val" id="sum-review" style="color:var(--lv)">0</div>
+            <div class="stat-sub">minor issues</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(239,68,68,0.2)">
+            <div class="stat-label">Gaps</div>
+            <div class="stat-val" id="sum-gap" style="color:#fca5a5">0</div>
+            <div class="stat-sub">cannot import</div>
+        </div>
+        <div class="stat-card" style="border-color:var(--bda)">
+            <div class="stat-label">Total tCO₂e</div>
+            <div class="stat-val" id="sum-tco2e" style="color:var(--lv)">0</div>
+            <div class="stat-sub">importable rows</div>
+        </div>
+    </div>
+
+    <!-- Gap analysis banner -->
+    <div id="gap-banner" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:12px;color:#fca5a5">
+        <strong style="color:#fff">Gap Analysis:</strong> <span id="gap-detail"></span>
+        <span style="color:var(--txm)"> — these rows are shown in red below and will be skipped. Fix the source data and re-upload to include them.</span>
+    </div>
+
+    <!-- DEFRA year notice -->
+    <div id="year-notice" style="background:var(--lvl);border:1px solid var(--bda);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--lv)"></div>
+
+    <!-- Filter tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="ftab active" data-filter="all">All rows</button>
+        <button class="ftab" data-filter="ready">Ready ✓</button>
+        <button class="ftab" data-filter="needsreview">Needs review</button>
+        <button class="ftab" data-filter="gap">Gaps ✗</button>
+    </div>
+
+    <!-- Preview table -->
+    <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:20px">
+        <div style="overflow-x:auto">
+            <table id="preview-table" style="min-width:1100px">
+                <thead><tr>
+                    <th>#</th><th></th><th>Date</th><th>Origin</th><th>Destination</th>
+                    <th>Mode (mapped)</th><th>Pax</th><th>km</th>
+                    <th>DEFRA EF (6dp)</th><th>kgCO₂e</th><th>Year</th><th>Issues</th>
+                </tr></thead>
+                <tbody id="preview-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Action bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <button onclick="resetUpload()" style="background:transparent;border:1px solid var(--bd);border-radius:8px;padding:10px 18px;color:var(--txm);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif">← Upload different file</button>
+        <div style="display:flex;align-items:center;gap:12px">
+            <span id="import-summary" style="font-size:12px;color:var(--txm)"></span>
+            <button id="btn-import" onclick="confirmImport()" class="btn-submit" style="width:auto;padding:10px 28px;font-size:14px">
+                Import clean rows →
+            </button>
+        </div>
+    </div>
+</div><!-- end step-preview -->
+
+<!-- STEP 3 — Success (hidden until imported) -->
+<div id="step-done" style="display:none">
+    <div class="card card-p" style="text-align:center;padding:56px">
+        <div style="font-size:48px;margin-bottom:16px">✅</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:28px;margin-bottom:8px;color:var(--tx)">Import complete</div>
+        <div id="done-detail" style="font-size:14px;color:var(--txm);margin-bottom:28px"></div>
+        <div style="display:flex;gap:12px;justify-content:center">
+            <a href="/Reports" class="btn-primary">View audit report →</a>
+            <a href="/Trip" class="btn-back" style="width:auto;padding:10px 20px">View trip log</a>
+            <button onclick="resetUpload()" class="btn-back" style="width:auto;padding:10px 20px">Upload another file</button>
+        </div>
+    </div>
+</div>
+
+<!-- Template: sample Excel format download hint -->
+<div style="margin-top:28px;border-top:1px solid var(--bd);padding-top:20px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txs);margin-bottom:12px">Supported input formats</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="card card-p" style="font-size:12px">
+            <strong style="color:var(--tx)">Excel (.xlsx)</strong> — any sheet, first row as headers.<br>
+            <span style="color:var(--txm)">From SAP Concur, Xero Expenses, TravelPerk, Booking.com for Business, or your own log.</span>
+        </div>
+        <div class="card card-p" style="font-size:12px">
+            <strong style="color:var(--tx)">CSV (.csv)</strong> — comma or standard delimiter, UTF-8 encoded.<br>
+            <span style="color:var(--txm)">Column header synonyms handled: "Where From" = origin, "Vehicle" = mode, "Miles" = distance, etc.</span>
+        </div>
+    </div>
+    <div class="info-box" style="margin-top:14px;margin-bottom:0">
+        <strong>Year-locked factors.</strong>
+        DEFRA 2024 factors are applied to any trip dated in calendar year 2024 or earlier.
+        DEFRA 2025 factors are applied to trips dated 2025 onward.
+        Both factor sets are locked — re-running your data later will never change historical calculations.
+    </div>
+</div>
+
+<style>
+.opt-row { display:flex;gap:12px;align-items:flex-start;cursor:pointer }
+.opt-row input[type="checkbox"] { margin-top:2px;flex-shrink:0;accent-color:var(--sc);width:16px;height:16px }
+
+#drop-zone {
+    border:2px dashed var(--bd);border-radius:14px;padding:48px 24px;
+    text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)
+}
+#drop-zone:hover, #drop-zone.drag-over { border-color:var(--sc);background:rgba(92,122,90,0.07) }
+
+.upload-spinner {
+    width:32px;height:32px;border:3px solid var(--bd);
+    border-top-color:var(--lv);border-radius:50%;
+    animation:spin .8s linear infinite;margin:0 auto
+}
+@@keyframes spin { to { transform:rotate(360deg) } }
+
+.ftab {
+    padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;
+    border:1px solid var(--bd);background:transparent;color:var(--txm);
+    cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s
+}
+.ftab.active { background:var(--scl);color:var(--tx);border-color:rgba(92,122,90,0.3) }
+
+.row-ready   td { }
+.row-review  td { background:rgba(197,180,227,0.04) }
+.row-gap     td { background:rgba(239,68,68,0.05);color:rgba(255,255,255,0.45) }
+
+.conf-high   { color:#8aac87 }
+.conf-medium { color:#e0c060 }
+.conf-low, .conf-none { color:#fca5a5 }
+
+.issue-pill {
+    display:inline-block;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);
+    color:#fca5a5;border-radius:4px;padding:1px 6px;font-size:9px;margin:1px 2px
+}
+.warn-pill {
+    display:inline-block;background:rgba(197,180,227,0.1);border:1px solid rgba(197,180,227,0.2);
+    color:var(--lv);border-radius:4px;padding:1px 6px;font-size:9px;margin:1px 2px
+}
+</style>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let parsedRows = [];
+let includeWtt = false;
+let includeRfi = false;
+let currentFilter = 'all';
+
+// ── File input ────────────────────────────────────────────────────────────────
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) parseFile(fileInput.files[0]);
+});
+
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) parseFile(f);
+});
+
+document.getElementById('opt-wtt').addEventListener('change', e => { includeWtt = e.target.checked; });
+document.getElementById('opt-rfi').addEventListener('change', e => { includeRfi = e.target.checked; });
+
+// ── Parse ─────────────────────────────────────────────────────────────────────
+async function parseFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'xlsx' && ext !== 'csv') {
+        showParseError('Only .xlsx and .csv files are supported.');
+        return;
+    }
+
+    document.getElementById('drop-zone').style.display    = 'none';
+    document.getElementById('parse-progress').style.display = 'flex';
+    document.getElementById('parse-error').style.display  = 'none';
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('includeWtt', includeWtt);
+    fd.append('includeRfi', includeRfi);
+
+    try {
+        const res  = await fetch('/Upload/Parse', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        document.getElementById('parse-progress').style.display = 'none';
+
+        if (!data.success) { showParseError(data.error); return; }
+
+        parsedRows = data.rows;
+        renderPreview(data);
+        document.getElementById('step-upload').style.display  = 'none';
+        document.getElementById('step-preview').style.display = 'block';
+
+    } catch (err) {
+        document.getElementById('parse-progress').style.display = 'none';
+        showParseError('Network error: ' + err.message);
+    }
+}
+
+function showParseError(msg) {
+    document.getElementById('drop-zone').style.display   = 'block';
+    const el = document.getElementById('parse-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+// ── Preview ────────────────────────────────────────────────────────────────────
+function renderPreview(data) {
+    document.getElementById('sum-total').textContent  = data.rows.length;
+    document.getElementById('sum-ready').textContent  = data.readyCount;
+    document.getElementById('sum-review').textContent = data.reviewCount;
+    document.getElementById('sum-gap').textContent    = data.gapCount;
+    document.getElementById('sum-tco2e').textContent  = data.totalTCO2e;
+
+    // Gap banner
+    if (data.gapCount > 0) {
+        document.getElementById('gap-banner').style.display = 'block';
+        document.getElementById('gap-detail').textContent   =
+            `${data.gapCount} row${data.gapCount > 1 ? 's' : ''} cannot be imported`;
+    }
+
+    // DEFRA year notice
+    const years = [...new Set(data.rows.filter(r => r.defraYear).map(r => r.defraYear))];
+    if (years.length > 0) {
+        document.getElementById('year-notice').innerHTML =
+            `<strong>DEFRA factors applied:</strong> ${years.join(' · ')} — ` +
+            `factors are locked to the year of each trip for audit accuracy.`;
+    }
+
+    renderTable();
+    const importable = data.readyCount + data.reviewCount;
+    document.getElementById('import-summary').textContent =
+        `${importable} rows will be imported (${data.gapCount} gaps skipped)`;
+}
+
+function renderTable() {
+    const tbody = document.getElementById('preview-body');
+    tbody.innerHTML = '';
+
+    const filtered = currentFilter === 'all' ? parsedRows
+        : parsedRows.filter(r => r.status === currentFilter);
+
+    filtered.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = 'row-' + r.status;
+        if (r.status === 'gap') tr.style.opacity = '.6';
+
+        const statusIcon = r.status === 'ready' ? '<span style="color:#8aac87;font-weight:700">✓</span>'
+            : r.status === 'needsreview' ? '<span style="color:var(--lv);font-size:11px">⚠</span>'
+            : '<span style="color:#fca5a5">✗</span>';
+
+        const modeTag = r.transportMode
+            ? `<span class="tag ${r.transportMode.startsWith('Flight') ? 'tag-flight' : r.transportMode.startsWith('Train') ? 'tag-train' : 'tag-car'}" style="font-size:9px">${r.transportMode}</span>`
+            : `<span style="color:#fca5a5;font-size:10px">${r.rawMode || '—'}</span>`;
+
+        const confClass = 'conf-' + (r.modeConfidence || 'none');
+
+        const issueHtml = (r.issues || []).map(i =>
+            i.toLowerCase().includes('missing') || i.toLowerCase().includes('not recog') || i.toLowerCase().includes('no defra')
+                ? `<span class="issue-pill">${i}</span>`
+                : `<span class="warn-pill">${i}</span>`
+        ).join('');
+
+        tr.innerHTML = `
+            <td class="mono" style="color:var(--txs)">${r.sourceRow}</td>
+            <td style="text-align:center">${statusIcon}</td>
+            <td style="white-space:nowrap;color:var(--txm)">${r.tripDateFmt || r.tripDate || '—'}</td>
+            <td>${r.origin || '<span style="color:#fca5a5">—</span>'}</td>
+            <td>${r.destination || '<span style="color:#fca5a5">—</span>'}</td>
+            <td><span class="${confClass}">${modeTag}</span></td>
+            <td class="mono">${r.passengers}</td>
+            <td class="mono">${r.distanceKm > 0 ? r.distanceKm.toFixed(2) + (r.distanceMiles ? ' <span style="font-size:9px;color:var(--txs)">(mi→km)</span>' : '') : '<span style="color:#fca5a5">—</span>'}</td>
+            <td class="mono" style="font-size:10px">${r.emissionFactor > 0 ? r.emissionFactor.toFixed(6) : '—'}</td>
+            <td class="co2">${r.kgCO2e > 0 ? r.kgCO2e.toFixed(2) : '—'}</td>
+            <td><span class="ok-badge" style="font-size:9px">${r.defraYear || '—'}</span></td>
+            <td style="max-width:220px">${issueHtml || '<span style="color:var(--txs);font-size:10px">none</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Filter tabs
+document.querySelectorAll('.ftab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderTable();
+    });
+});
+
+// ── Confirm import ─────────────────────────────────────────────────────────────
+async function confirmImport() {
+    const importable = parsedRows.filter(r => r.status !== 'gap');
+    if (importable.length === 0) {
+        alert('No importable rows found.');
+        return;
+    }
+
+    const btn = document.getElementById('btn-import');
+    btn.disabled = true;
+    btn.textContent = 'Importing…';
+
+    const rows = importable.map(r => ({
+        tripDate:      r.tripDate,
+        origin:        r.origin,
+        destination:   r.destination,
+        transportMode: r.transportMode,
+        travelClass:   r.travelClass,
+        passengers:    r.passengers,
+        distanceKm:    r.distanceKm,
+        methodology:   r.methodology,
+    }));
+
+    try {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+        const res   = await fetch('/Upload/Confirm', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token,
+            },
+            body: JSON.stringify({ includeWtt, includeRfi, rows }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('step-preview').style.display = 'none';
+            document.getElementById('step-done').style.display    = 'block';
+            document.getElementById('done-detail').innerHTML =
+                `<strong style="color:var(--tx)">${data.imported} trips</strong> imported · ` +
+                `<strong style="color:var(--lv)">${data.tCO2e} tCO₂e</strong> (${data.kgCO2e} kgCO₂e) · ` +
+                `DEFRA year-locked factors applied`;
+        } else {
+            btn.disabled = false;
+            btn.textContent = 'Import clean rows →';
+            alert('Import failed: ' + data.error);
+        }
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Import clean rows →';
+        alert('Network error: ' + err.message);
+    }
+}
+
+function resetUpload() {
+    parsedRows = [];
+    fileInput.value = '';
+    document.getElementById('step-upload').style.display  = 'block';
+    document.getElementById('step-preview').style.display = 'none';
+    document.getElementById('step-done').style.display    = 'none';
+    document.getElementById('drop-zone').style.display    = 'block';
+    document.getElementById('parse-error').style.display  = 'none';
+    document.getElementById('btn-import').disabled        = false;
+    document.getElementById('btn-import').textContent     = 'Import clean rows →';
+}
+</script>
+
+@Html.AntiForgeryToken()
