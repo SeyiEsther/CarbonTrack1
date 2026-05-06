@@ -24,6 +24,7 @@ namespace CarbonTrack.Controllers
             { "Flight-LongHaul-First",     "Air Travel – Long Haul – First Class" },
             { "Train-National",            "Rail – National Rail (UK average)" },
             { "Train-International",       "Rail – International (e.g. Eurostar)" },
+            { "Car-Average",               "Car – Average (DESNZ 2024 WTW, vehicle-km)" },
             { "Car-Petrol",                "Car – Average Petrol (unknown size)" },
             { "Car-Diesel",                "Car – Average Diesel (unknown size)" },
             { "Car-Hybrid",                "Car – Average Hybrid (petrol-electric)" },
