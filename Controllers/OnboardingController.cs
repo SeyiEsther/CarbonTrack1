@@ -1,24 +1,31 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class OnboardingController : Controller
     {
         private readonly CarbonTrackContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<OnboardingController> _logger;
 
-        public OnboardingController(CarbonTrackContext context, ILogger<OnboardingController> logger)
+        public OnboardingController(CarbonTrackContext context, UserManager<ApplicationUser> userManager, ILogger<OnboardingController> logger)
         {
             _context = context;
+            _userManager = userManager;
             _logger  = logger;
         }
 
         // GET /Onboarding
         public async Task<IActionResult> Index()
         {
-            var org = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1);
+            var currentUser = await _userManager.GetUserAsync(User);
+            var orgId = currentUser?.OrganisationId ?? 0;
+            var org = orgId > 0 ? await _context.Organisations.FindAsync(orgId) : null;
             if (org == null) return RedirectToAction("Index", "Dashboard");
             return View(org);
         }
@@ -37,7 +44,9 @@ namespace CarbonTrack.Controllers
         {
             try
             {
-                var org = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1);
+                var currentUser = await _userManager.GetUserAsync(User);
+                var orgId = currentUser?.OrganisationId ?? 0;
+                var org = orgId > 0 ? await _context.Organisations.FindAsync(orgId) : null;
                 if (org == null) return RedirectToAction("Index", "Dashboard");
 
                 if (!string.IsNullOrWhiteSpace(orgName))

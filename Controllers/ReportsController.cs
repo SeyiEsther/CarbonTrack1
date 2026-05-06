@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
@@ -8,9 +10,11 @@ using System.Text;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize(Roles = "Admin,Consultant")]
     public class ReportsController : Controller
     {
         private readonly CarbonTrackContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<ReportsController> _logger;
 
         // Full DEFRA 2025 category descriptions for audit trail
@@ -34,9 +38,10 @@ namespace CarbonTrack.Controllers
             { "Ferry-Car",                 "Ferry – Car Passenger" },
         };
 
-        public ReportsController(CarbonTrackContext context, ILogger<ReportsController> logger)
+        public ReportsController(CarbonTrackContext context, UserManager<ApplicationUser> userManager, ILogger<ReportsController> logger)
         {
             _context = context;
+            _userManager = userManager;
             _logger = logger;
         }
 
@@ -47,8 +52,10 @@ namespace CarbonTrack.Controllers
 
             try
             {
-                var trips = await _context.Trips.OrderByDescending(t => t.TripDate).ToListAsync();
-                var org   = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1);
+                var currentUser = await _userManager.GetUserAsync(User);
+                var orgId = currentUser?.OrganisationId ?? 0;
+                var trips = await _context.Trips.Where(t => t.OrganisationId == orgId).OrderByDescending(t => t.TripDate).ToListAsync();
+                var org   = orgId > 0 ? await _context.Organisations.FindAsync(orgId) : null;
 
                 // ── Unique report ID (stable for same day, unique per day) ──────
                 var reportId = $"CT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N").ToUpper()[..8]}";
@@ -133,7 +140,9 @@ namespace CarbonTrack.Controllers
         {
             try
             {
-                var trips = await _context.Trips.OrderByDescending(t => t.TripDate).ToListAsync();
+                var currentUser = await _userManager.GetUserAsync(User);
+                var orgId = currentUser?.OrganisationId ?? 0;
+                var trips = await _context.Trips.Where(t => t.OrganisationId == orgId).OrderByDescending(t => t.TripDate).ToListAsync();
                 var sb = new StringBuilder();
                 sb.AppendLine("Date,Origin,Destination,DEFRA Category,Transport Mode,Passengers,Distance (km),Distance Method,EF (kgCO2e/km),kgCO2e,Formula,DEFRA Year,Logged (UTC)");
 
@@ -161,7 +170,9 @@ namespace CarbonTrack.Controllers
             try
             {
                 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-                var trips = await _context.Trips.OrderByDescending(t => t.TripDate).ToListAsync();
+                var currentUser = await _userManager.GetUserAsync(User);
+                var orgId = currentUser?.OrganisationId ?? 0;
+                var trips = await _context.Trips.Where(t => t.OrganisationId == orgId).OrderByDescending(t => t.TripDate).ToListAsync();
 
                 using var pkg = new ExcelPackage();
 

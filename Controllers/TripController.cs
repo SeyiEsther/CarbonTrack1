@@ -1,19 +1,24 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize]
     public class TripController : Controller
     {
         private readonly CarbonTrackContext _context;
         private readonly GoogleMapsService _mapsService;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<TripController> _logger;
 
-        public TripController(CarbonTrackContext context, GoogleMapsService mapsService, ILogger<TripController> logger)
+        public TripController(CarbonTrackContext context, GoogleMapsService mapsService, UserManager<ApplicationUser> userManager, ILogger<TripController> logger)
         {
             _context = context;
             _mapsService = mapsService;
+            _userManager = userManager;
             _logger = logger;
         }
 
@@ -24,9 +29,15 @@ namespace CarbonTrack.Controllers
 
             try
             {
-                var trips = await _context.Trips
-                    .OrderByDescending(t => t.TripDate)
-                    .ToListAsync();
+                var currentUser = await _userManager.GetUserAsync(User);
+                var orgId = currentUser?.OrganisationId ?? 0;
+                var isEmployee = User.IsInRole("Employee");
+                var userId = currentUser?.Id;
+
+                var trips = isEmployee && userId != null
+                    ? await _context.Trips.Where(t => t.UserId == userId).OrderByDescending(t => t.TripDate).ToListAsync()
+                    : await _context.Trips.Where(t => t.OrganisationId == orgId).OrderByDescending(t => t.TripDate).ToListAsync();
+
                 return View(trips);
             }
             catch (Exception ex)
@@ -56,6 +67,7 @@ namespace CarbonTrack.Controllers
             ModelState.Remove(nameof(Trip.DefraFactorYear));
             ModelState.Remove(nameof(Trip.CreatedAt));
             ModelState.Remove(nameof(Trip.OrganisationId));
+            ModelState.Remove(nameof(Trip.UserId));
 
             if (!ModelState.IsValid)
             {
@@ -86,8 +98,10 @@ namespace CarbonTrack.Controllers
                 trip.KgCO2e = DefraCalculator.CalculateKgCO2e(trip.DistanceKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode);
                 trip.Formula = DefraCalculator.GetFormula(trip.DistanceKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode);
                 trip.DistanceMethodology = DefraCalculator.GetDistanceMethodology(trip.TransportMode);
+                var currentUser = await _userManager.GetUserAsync(User);
                 trip.DefraFactorYear = "DEFRA 2025";
-                trip.OrganisationId = 1;
+                trip.OrganisationId = currentUser?.OrganisationId ?? 0;
+                trip.UserId = currentUser?.Id;
                 trip.CreatedAt = DateTime.UtcNow;
 
                 _context.Trips.Add(trip);

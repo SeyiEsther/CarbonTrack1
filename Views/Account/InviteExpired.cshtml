@@ -1,0 +1,32 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Invite expired — CarbonTrack";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@ViewData["Title"]</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;font-family:'DM Sans',sans-serif}
+body{background:linear-gradient(145deg,#2a1228 0%,#3A1C36 40%,#4d2e52 60%,#374126 100%);display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{width:360px;background:rgba(255,255,255,0.07);backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.13);border-radius:28px;padding:44px 38px;text-align:center}
+.logo{display:flex;align-items:center;gap:7px;margin-bottom:28px;justify-content:center}
+.logo-dot{width:7px;height:7px;background:#E3D0EA;border-radius:50%}
+.logo-name{font-family:'DM Serif Display',serif;font-size:16px;color:rgba(255,255,255,0.8)}
+h1{font-family:'DM Serif Display',serif;font-size:28px;color:#fff;margin-bottom:12px}
+p{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:24px;line-height:1.6}
+a{display:inline-block;background:rgba(227,208,234,0.9);color:#3A1C36;border-radius:14px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo"><div class="logo-dot"></div><span class="logo-name">CarbonTrack</span></div>
+  <h1>Link expired</h1>
+  <p>@(ViewBag.Error ?? "This invite link is invalid or has expired. Ask your admin to generate a new one.")</p>
+  <a href="/Account/Login">Back to sign in</a>
+</div>
+</body>
+</html>

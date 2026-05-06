@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize(Roles = "Consultant")]
     public class ClientsController : Controller
     {
         private readonly CarbonTrackContext _context;

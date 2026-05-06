@@ -1,0 +1,93 @@
+@model CarbonTrack.Models.AcceptInviteViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Join CarbonTrack";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@ViewData["Title"]</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',sans-serif}
+body{background:linear-gradient(145deg,#2a1228 0%,#3A1C36 40%,#4d2e52 60%,#374126 100%);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.orb{position:absolute;border-radius:50%;pointer-events:none}
+.orb1{width:550px;height:550px;top:-20%;right:-10%;background:radial-gradient(ellipse,rgba(155,113,178,0.35) 0%,transparent 65%)}
+.orb2{width:450px;height:450px;bottom:-20%;left:-8%;background:radial-gradient(ellipse,rgba(108,109,17,0.25) 0%,transparent 65%)}
+.card{position:relative;z-index:1;width:400px;background:rgba(255,255,255,0.07);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.13);border-radius:28px;padding:44px 38px;box-shadow:0 40px 80px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.18)}
+.logo{display:flex;align-items:center;gap:7px;margin-bottom:28px}
+.logo-dot{width:7px;height:7px;background:#E3D0EA;border-radius:50%}
+.logo-name{font-family:'DM Serif Display',serif;font-size:16px;color:rgba(255,255,255,0.8)}
+.invite-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(92,122,90,0.2);border:1px solid rgba(92,122,90,0.35);border-radius:8px;padding:6px 12px;font-size:11px;color:#8aac87;margin-bottom:20px}
+.card-title{font-family:'DM Serif Display',serif;font-size:30px;color:#fff;line-height:1.1;margin-bottom:6px}
+.card-sub{font-size:13px;color:rgba(255,255,255,0.35);margin-bottom:24px}
+.error-box{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#fca5a5}
+.field{margin-bottom:12px}
+.field-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.25);margin-bottom:5px;display:block}
+.field-inner{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:10px;transition:all .2s}
+.field-inner:focus-within{background:rgba(255,255,255,0.11);border-color:rgba(227,208,234,0.3);box-shadow:0 0 0 3px rgba(155,113,178,0.1)}
+.field-inner.readonly{opacity:0.5}
+.field-input{flex:1;background:none;border:none;outline:none;font-size:14px;color:#fff;font-family:'DM Sans',sans-serif;font-weight:300}
+.field-input::placeholder{color:rgba(255,255,255,0.2)}
+.btn{width:100%;margin-top:16px;background:rgba(227,208,234,0.9);color:#3A1C36;border:none;border-radius:14px;padding:15px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.btn:hover{background:#fff;transform:translateY(-1px);box-shadow:0 10px 30px rgba(0,0,0,0.25)}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="card">
+  <div class="logo"><div class="logo-dot"></div><span class="logo-name">CarbonTrack</span></div>
+
+  <div class="invite-badge">✓ You've been invited</div>
+
+  <h1 class="card-title">Join @Model.OrgName</h1>
+  <p class="card-sub">Set a password to activate your account.</p>
+
+  @if (!ViewData.ModelState.IsValid)
+  {
+    <div class="error-box">
+      @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+      { <div>@e.ErrorMessage</div> }
+    </div>
+  }
+
+  <form method="post" asp-action="AcceptInvite" asp-controller="Account">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Token"       value="@Model.Token" />
+    <input type="hidden" name="InviteEmail" value="@Model.InviteEmail" />
+    <input type="hidden" name="OrgName"     value="@Model.OrgName" />
+
+    <div class="field">
+      <label class="field-label">Email (pre-filled)</label>
+      <div class="field-inner readonly">
+        <input class="field-input" type="email" value="@Model.InviteEmail" disabled />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Your name</label>
+      <div class="field-inner">
+        <input class="field-input" type="text" name="FullName" placeholder="First Last" value="@Model.FullName" required autocomplete="name" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Password (min 8 characters)</label>
+      <div class="field-inner">
+        <input class="field-input" type="password" name="Password" placeholder="••••••••" required autocomplete="new-password" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Confirm password</label>
+      <div class="field-inner">
+        <input class="field-input" type="password" name="ConfirmPassword" placeholder="••••••••" required autocomplete="new-password" />
+      </div>
+    </div>
+
+    <button type="submit" class="btn">Activate account →</button>
+  </form>
+</div>
+</body>
+</html>

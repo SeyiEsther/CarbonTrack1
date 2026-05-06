@@ -1,17 +1,22 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize]
     public class DashboardController : Controller
     {
         private readonly CarbonTrackContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<DashboardController> _logger;
 
-        public DashboardController(CarbonTrackContext context, ILogger<DashboardController> logger)
+        public DashboardController(CarbonTrackContext context, UserManager<ApplicationUser> userManager, ILogger<DashboardController> logger)
         {
             _context = context;
+            _userManager = userManager;
             _logger = logger;
         }
 
@@ -20,14 +25,20 @@ namespace CarbonTrack.Controllers
             if (TempData["Success"] is string success) ViewBag.Success = success;
             if (TempData["Error"] is string tempError) ViewBag.Error = tempError;
 
-            // Load org profile for personalised dashboard
-            var org = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1);
+            var currentUser = await _userManager.GetUserAsync(User);
+            var orgId = currentUser?.OrganisationId ?? 0;
+
+            var org = orgId > 0 ? await _context.Organisations.FindAsync(orgId) : null;
             ViewBag.Org = org;
             ViewBag.ShowOnboarding = org != null && !org.OnboardingComplete;
 
             try
             {
-                var trips = await _context.Trips.ToListAsync();
+                var isEmployee = User.IsInRole("Employee");
+                var userId = currentUser?.Id;
+                var trips = isEmployee && userId != null
+                    ? await _context.Trips.Where(t => t.UserId == userId).ToListAsync()
+                    : await _context.Trips.Where(t => t.OrganisationId == orgId).ToListAsync();
 
                 ViewBag.TotalTrips = trips.Count;
                 ViewBag.TotalTCO2e = Math.Round(trips.Sum(t => t.KgCO2e) / 1000, 2);

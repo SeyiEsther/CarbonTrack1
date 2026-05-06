@@ -47,5 +47,12 @@ namespace CarbonTrack.Models
 
         [ForeignKey("OrganisationId")]
         public Organisation? Organisation { get; set; }
+
+        // Nullable: populated for new trips logged by authenticated users;
+        // null for trips imported before auth was introduced.
+        public string? UserId { get; set; }
+
+        [ForeignKey("UserId")]
+        public ApplicationUser? User { get; set; }
     }
 }

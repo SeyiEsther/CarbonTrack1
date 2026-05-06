@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Identity
+@using CarbonTrack.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserMgr
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -111,24 +115,67 @@ tr:hover td{background:rgba(255,255,255,0.03)}
 </head>
 <body>
 <div class="app">
+  @{
+    var ctrl = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    ApplicationUser? navUser = null;
+    if (SignInManager.IsSignedIn(User))
+        navUser = await UserMgr.GetUserAsync(User);
+    var isAdmin      = User.IsInRole("Admin");
+    var isConsultant = User.IsInRole("Consultant");
+    var isEmployee   = User.IsInRole("Employee");
+    var initials     = navUser?.FullName is { Length: > 0 } fn
+        ? string.Concat(fn.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w[0]))
+        : (navUser?.Email?[..1].ToUpper() ?? "?");
+  }
   <nav class="nav">
     <a href="/Dashboard" class="nav-logo">
       <div class="nav-dot"></div>
       <span class="nav-name">CarbonTrack</span>
     </a>
     <div class="nav-links">
-      <a href="/Dashboard" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")">Dashboard</a>
-      <a href="/Trip/LogTrip" class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "LogTrip" ? "active" : "")">Log Trip</a>
-      <a href="/Trip" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Trip" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">Trip Log</a>
-      <a href="/Reports" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" ? "active" : "")">Reports</a>
-      <a href="/Clients" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Clients" ? "active" : "")">Clients</a>
-      <a href="/Upload" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Upload" ? "active" : "")">Upload</a>
-      <a href="/Compliance" class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Compliance" ? "active" : "")">Compliance</a>
+      <a href="/Dashboard" class="nav-link @(ctrl == "Dashboard" ? "active" : "")">Dashboard</a>
+      @if (isAdmin || isConsultant || isEmployee)
+      {
+        <a href="/Trip/LogTrip" class="nav-link @(action == "LogTrip" ? "active" : "")">Log Trip</a>
+        <a href="/Trip" class="nav-link @(ctrl == "Trip" && action == "Index" ? "active" : "")">Trip Log</a>
+      }
+      @if (isAdmin || isConsultant)
+      {
+        <a href="/Reports" class="nav-link @(ctrl == "Reports" ? "active" : "")">Reports</a>
+        <a href="/Upload" class="nav-link @(ctrl == "Upload" ? "active" : "")">Upload</a>
+        <a href="/Compliance" class="nav-link @(ctrl == "Compliance" ? "active" : "")">Compliance</a>
+      }
+      @if (isConsultant)
+      {
+        <a href="/Clients" class="nav-link @(ctrl == "Clients" ? "active" : "")">Clients</a>
+      }
+      @if (isAdmin)
+      {
+        <a href="/Account/Manage" class="nav-link @(ctrl == "Account" && action == "Manage" ? "active" : "")">Team</a>
+        <a href="/Admin" class="nav-link @(ctrl == "Admin" ? "active" : "")">Admin</a>
+      }
     </div>
     <div class="nav-right">
       <div class="defra-pill"><div class="defra-dot"></div>DEFRA 2025</div>
-      <a href="/Trip/LogTrip" class="btn-primary">+ Log trip</a>
-      <div class="user-av">SO</div>
+      @if (isAdmin || isConsultant || isEmployee)
+      {
+        <a href="/Trip/LogTrip" class="btn-primary">+ Log trip</a>
+      }
+      @if (SignInManager.IsSignedIn(User))
+      {
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="text-align:right;display:none;@("display:block")">
+            <div style="font-size:11px;font-weight:600;color:var(--tx)">@navUser?.FullName</div>
+            <div style="font-size:9px;color:var(--txs);text-transform:uppercase;letter-spacing:.05em">@(isConsultant ? "Consultant" : isAdmin ? "Admin" : "Employee")</div>
+          </div>
+          <div class="user-av" title="@navUser?.Email">@initials</div>
+          <form method="post" asp-controller="Account" asp-action="Logout" style="margin:0">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="nav-link" style="font-size:11px;color:var(--txs)">Sign out</button>
+          </form>
+        </div>
+      }
     </div>
   </nav>
   <div class="page">

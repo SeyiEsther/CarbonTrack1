@@ -1,19 +1,29 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarbonTrack.Models;
 
 namespace CarbonTrack.Controllers
 {
+    [Authorize(Roles = "Admin,Consultant")]
     public class ComplianceController : Controller
     {
         private readonly CarbonTrackContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ComplianceController(CarbonTrackContext context) => _context = context;
+        public ComplianceController(CarbonTrackContext context, UserManager<ApplicationUser> userManager)
+        {
+            _context = context;
+            _userManager = userManager;
+        }
 
         public async Task<IActionResult> Index()
         {
-            var org   = await _context.Organisations.FirstOrDefaultAsync(o => o.Id == 1);
-            var trips = await _context.Trips.ToListAsync();
+            var currentUser = await _userManager.GetUserAsync(User);
+            var orgId = currentUser?.OrganisationId ?? 0;
+            var org   = orgId > 0 ? await _context.Organisations.FindAsync(orgId) : null;
+            var trips = await _context.Trips.Where(t => t.OrganisationId == orgId).ToListAsync();
 
             ViewBag.Org           = org;
             ViewBag.TripCount     = trips.Count;
