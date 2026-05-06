@@ -149,36 +149,6 @@ namespace CarbonTrack.Models
             return "Flight-LongHaul-Economy";
         }
 
-        // ── Vehicle text → DESNZ mode code + WTW factor ───────────────────────
-        // Returns CT mode code and confidence level
-        public static (string mode, string confidence) MapRawMode(
-            string rawMode, string viaOrDest, double totalMiles)
-        {
-            string s = rawMode.ToLowerInvariant().Trim();
-
-            if (s.Contains("car") || s.Contains("drive") || s.Contains("drove"))
-                return ("Car-Average", "high");
-
-            if (s.Contains("train") || s.Contains("rail"))
-            {
-                // Simple heuristic: if via city is outside UK → international rail
-                bool intl = !string.IsNullOrWhiteSpace(viaOrDest) &&
-                            !UkCities.Contains(NormaliseCity(viaOrDest));
-                return (intl ? "Train-International" : "Train-National", "high");
-            }
-
-            if (s.Contains("plane") || s.Contains("flight") || s.Contains("air") || s.Contains("flew"))
-            {
-                // one-way km: if total miles represents a return trip, divide by 2
-                // We don't know here whether it's return — caller resolves
-                double onewayKm = (totalMiles / 0.621);
-                string flightMode = InferFlightMode(viaOrDest, onewayKm / 2); // assume return = /2
-                return (flightMode, "medium");
-            }
-
-            return ("", "none");
-        }
-
         // ── Date parsing ───────────────────────────────────────────────────────
         // Handles: "YY MM DD" (e.g., "24 01 22"), plus standard formats
         public static DateTime? ParseFlexDate(string raw)

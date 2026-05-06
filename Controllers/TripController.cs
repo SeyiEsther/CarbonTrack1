@@ -83,8 +83,8 @@ namespace CarbonTrack.Controllers
                     return View(trip);
                 }
 
-                trip.KgCO2e = DefraCalculator.CalculateKgCO2e(trip.DistanceKm, trip.EmissionFactor, trip.Passengers);
-                trip.Formula = DefraCalculator.GetFormula(trip.DistanceKm, trip.EmissionFactor, trip.Passengers);
+                trip.KgCO2e = DefraCalculator.CalculateKgCO2e(trip.DistanceKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode);
+                trip.Formula = DefraCalculator.GetFormula(trip.DistanceKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode);
                 trip.DistanceMethodology = DefraCalculator.GetDistanceMethodology(trip.TransportMode);
                 trip.DefraFactorYear = "DEFRA 2025";
                 trip.OrganisationId = 1;

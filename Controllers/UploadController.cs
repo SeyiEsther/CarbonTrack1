@@ -15,8 +15,10 @@ namespace CarbonTrack.Controllers
         // Each entry: pattern substrings to match (lowercase), field name
         private static readonly (string[] Patterns, string Field)[] HeaderPatterns =
         {
-            (new[]{ "date out","date_out","departure date","travel date","trip date","date" }, "dateout"),
+            // dateback must be checked before dateout: "date back" contains the substring "date"
+            // which would otherwise match the dateout entry's generic "date" pattern first.
             (new[]{ "date back","date_back","return date","back" },                            "dateback"),
+            (new[]{ "date out","date_out","departure date","travel date","trip date","date" }, "dateout"),
             (new[]{ "journey","route","itinerary","trip route","from/to" },                   "journey"),
             (new[]{ "from","origin","departure","depart","start city","leaving from" },       "origin"),
             (new[]{ "to","destination","dest","arrival","end city","arriving" },              "dest"),
@@ -383,8 +385,10 @@ namespace CarbonTrack.Controllers
 
                     bulk.DefraYear   = "DESNZ 2024 WTW";
                     bulk.Methodology = modeCode.StartsWith("Flight")
-                        ? "Source data miles"
-                        : "Source data miles";
+                        ? "Source miles – great circle (÷0.621)"
+                        : modeCode.StartsWith("Train")
+                            ? "Source miles – rail distance (÷0.621)"
+                            : "Source miles – road distance (÷0.621)";
                 }
                 else
                 {

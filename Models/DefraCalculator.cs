@@ -28,15 +28,24 @@ namespace CarbonTrack.Models
             return EmissionFactors.TryGetValue(transportMode, out double factor) ? factor : 0;
         }
 
-        public static double CalculateKgCO2e(double distanceKm, double emissionFactor, int passengers)
+        // Car, taxi and ferry-car factors are per vehicle-km (DEFRA methodology):
+        // the vehicle uses the same fuel regardless of occupancy, so no pax multiplier.
+        private static bool IsVehicleKmMode(string? mode) =>
+            mode != null && (mode.StartsWith("Car") || mode == "Taxi" || mode == "Ferry-Car");
+
+        public static double CalculateKgCO2e(double distanceKm, double emissionFactor, int passengers, string? transportMode = null)
         {
             if (distanceKm <= 0 || emissionFactor <= 0 || passengers <= 0) return 0;
-            return Math.Round(distanceKm * emissionFactor * passengers, 2);
+            return IsVehicleKmMode(transportMode)
+                ? Math.Round(distanceKm * emissionFactor, 2)
+                : Math.Round(distanceKm * emissionFactor * passengers, 2);
         }
 
-        public static string GetFormula(double distanceKm, double emissionFactor, int passengers)
+        public static string GetFormula(double distanceKm, double emissionFactor, int passengers, string? transportMode = null)
         {
-            return $"{distanceKm:F2} km × {emissionFactor} kgCO₂e/km × {passengers} pax";
+            return IsVehicleKmMode(transportMode)
+                ? $"{distanceKm:F2} km × {emissionFactor} kgCO₂e/km (vehicle-km)"
+                : $"{distanceKm:F2} km × {emissionFactor} kgCO₂e/km × {passengers} pax";
         }
 
         public static double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
