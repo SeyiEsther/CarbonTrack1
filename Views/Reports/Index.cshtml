@@ -6,6 +6,13 @@
     Layout = "_Layout";
     var trips = Model ?? Enumerable.Empty<CarbonTrack.Models.Trip>();
     var now = DateTime.UtcNow;
+    string reportId   = ViewBag.ReportId   ?? "CT-UNKNOWN";
+    string orgName    = ViewBag.OrgName    ?? "Default Organisation";
+    string orgEmail   = ViewBag.OrgEmail   ?? "";
+    DateTime genUtc   = ViewBag.GeneratedUtc ?? now;
+    double totalKgAll = trips.Sum(t => t.KgCO2e);
+    var top10 = (IEnumerable<CarbonTrack.Models.Trip>)(ViewBag.Top10Trips ?? new List<CarbonTrack.Models.Trip>());
+    var sample = ViewBag.SampleTrip as CarbonTrack.Models.Trip;
 }
 
 @if (ViewBag.Success != null)
@@ -30,23 +37,24 @@
                 <h1 class="page-title" style="margin:0">Emissions Report</h1>
             </div>
             <p style="font-size:13px;color:var(--txm);margin-left:13px">
-                DEFRA 2025 · Scope 3 Cat 6 & 7 · All time ·
-                Generated <strong style="color:var(--tx)">@now.ToString("dd MMM yyyy")</strong>
+                DEFRA 2025 · Scope 3 Cat 6 &amp; 7 · All time ·
+                Generated <strong style="color:var(--tx)">@genUtc.ToString("dd MMM yyyy HH:mm") UTC</strong>
             </p>
+            <p style="font-size:11px;color:var(--txs);margin-left:13px;margin-top:2px;font-family:monospace">@reportId</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <a href="/Reports/ExportCsv" class="xbtn xbtn-green">↓ CSV</a>
+            <a href="/Reports/ExportCsv"   class="xbtn xbtn-green">↓ CSV</a>
             <a href="/Reports/ExportExcel" class="xbtn xbtn-lv">↓ Excel</a>
             <button onclick="window.print()" class="xbtn xbtn-ghost">⎙ Print audit PDF</button>
         </div>
     </div>
 
-    <!-- Top KPI row — distinct from dashboard -->
+    <!-- Top KPI row -->
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:24px">
         <div style="background:var(--bg2);border:1px solid var(--bda);border-radius:14px;padding:22px 26px;display:flex;align-items:center;gap:20px">
             <div style="width:48px;height:48px;border-radius:12px;background:rgba(197,180,227,0.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🌍</div>
             <div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txm);margin-bottom:4px">Total Scope 3 Cat 6&7</div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txm);margin-bottom:4px">Total Scope 3 Cat 6&amp;7</div>
                 <div style="font-family:'DM Serif Display',serif;font-size:38px;line-height:1;color:var(--tx)">@ViewBag.TotalTCO2e</div>
                 <div style="font-size:11px;color:var(--txm);margin-top:2px">tCO₂e all time</div>
             </div>
@@ -68,7 +76,7 @@
         </div>
     </div>
 
-    <!-- Mode breakdown + Top routes side by side -->
+    <!-- Mode breakdown + Top routes -->
     <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:24px">
 
         <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden">
@@ -78,19 +86,19 @@
             </div>
             <table>
                 <thead><tr>
-                    <th>Mode</th><th>Trips</th><th>km</th><th>kgCO₂e</th><th>tCO₂e</th><th>Share</th>
+                    <th>Mode</th><th>Trips</th><th>km</th><th>EF (6dp)</th><th>kgCO₂e</th><th>tCO₂e</th><th>Share</th>
                 </tr></thead>
                 <tbody>
-                    @{
-                        double totalKg = trips.Sum(t => t.KgCO2e);
-                    }
                     @foreach (ModeRow row in (ViewBag.ModeBreakdown ?? new List<ModeRow>()))
                     {
-                        double pct = totalKg > 0 ? Math.Round(row.TotalKg / totalKg * 100, 1) : 0;
+                        double pct = totalKgAll > 0 ? Math.Round(row.TotalKg / totalKgAll * 100, 1) : 0;
                         <tr>
-                            <td><span class="tag @(row.Mode.StartsWith("Flight") ? "tag-flight" : row.Mode.StartsWith("Train") ? "tag-train" : "tag-car")">@row.Mode</span></td>
+                            <td>
+                                <span class="tag @(row.Mode.StartsWith("Flight") ? "tag-flight" : row.Mode.StartsWith("Train") ? "tag-train" : "tag-car")">@row.Mode</span>
+                            </td>
                             <td class="mono">@row.Count</td>
                             <td class="mono">@row.TotalKm.ToString("N0")</td>
+                            <td class="mono">@row.AvgFactor.ToString("F6")</td>
                             <td class="co2">@row.TotalKg.ToString("N2")</td>
                             <td class="mono">@row.TotalT</td>
                             <td style="min-width:80px">
@@ -105,7 +113,7 @@
                     }
                     @if (!trips.Any())
                     {
-                        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--txm)">No trips yet</td></tr>
+                        <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--txm)">No trips yet</td></tr>
                     }
                 </tbody>
             </table>
@@ -136,13 +144,46 @@
 
     </div>
 
+    <!-- Top 10 highest-emitting trips -->
+    @if (top10.Any())
+    {
+        <div style="background:var(--bg2);border:1px solid var(--bda);border-radius:14px;overflow:hidden;margin-bottom:24px">
+            <div style="padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px">
+                <div style="background:var(--lvl);border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:var(--lv);text-transform:uppercase;letter-spacing:.05em">Top 10</div>
+                <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--txm)">Highest-emitting individual trips</span>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>#</th><th>Date</th><th>Route</th><th>Mode</th><th>Pax</th><th>km</th><th>EF</th><th>kgCO₂e</th>
+                </tr></thead>
+                <tbody>
+                    @{ int rank = 1; }
+                    @foreach (var t in top10)
+                    {
+                        <tr>
+                            <td class="mono" style="color:var(--lv);font-weight:700">@rank</td>
+                            <td style="color:var(--txm);white-space:nowrap">@t.TripDate.ToString("dd MMM yyyy")</td>
+                            <td><strong>@t.Origin → @t.Destination</strong></td>
+                            <td><span class="tag @(t.TransportMode.StartsWith("Flight") ? "tag-flight" : t.TransportMode.StartsWith("Train") ? "tag-train" : "tag-car")">@t.TransportMode</span></td>
+                            <td class="mono">@t.Passengers</td>
+                            <td class="mono">@t.DistanceKm.ToString("N2")</td>
+                            <td class="mono">@t.EmissionFactor.ToString("F6")</td>
+                            <td class="co2">@t.KgCO2e.ToString("N2")</td>
+                        </tr>
+                        rank++;
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
     <!-- Full audit table -->
     <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden">
         <div style="padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--txm)">Full audit trail — @trips.Count() trips</span>
             <div style="display:flex;gap:8px">
-                <a href="/Reports/ExportCsv" class="xbtn xbtn-green" style="font-size:10px;padding:5px 10px">↓ CSV</a>
-                <a href="/Reports/ExportExcel" class="xbtn xbtn-lv" style="font-size:10px;padding:5px 10px">↓ Excel</a>
+                <a href="/Reports/ExportCsv"   class="xbtn xbtn-green"  style="font-size:10px;padding:5px 10px">↓ CSV</a>
+                <a href="/Reports/ExportExcel" class="xbtn xbtn-lv"     style="font-size:10px;padding:5px 10px">↓ Excel</a>
             </div>
         </div>
         @if (!trips.Any())
@@ -155,21 +196,23 @@
         else
         {
             <div style="overflow-x:auto">
-                <table style="min-width:900px">
+                <table style="min-width:1000px">
                     <thead><tr>
-                        <th>Date</th><th>Route</th><th>Mode</th><th>Pax</th>
-                        <th>Distance (km)</th><th>EF</th><th>Formula</th><th>kgCO₂e</th><th>Methodology</th>
+                        <th>Date</th><th>Route</th><th>DEFRA Category</th><th>Mode</th><th>Pax</th>
+                        <th>km</th><th>EF (6dp)</th><th>Formula</th><th>kgCO₂e</th><th>Method</th>
                     </tr></thead>
                     <tbody>
                         @foreach (var t in trips)
                         {
+                            var defraDesc = ReportsController.DefraCategoryDesc.GetValueOrDefault(t.TransportMode, t.TransportMode);
                             <tr>
                                 <td style="color:var(--txm);white-space:nowrap">@t.TripDate.ToString("dd MMM yyyy")</td>
                                 <td style="white-space:nowrap"><strong>@t.Origin → @t.Destination</strong></td>
+                                <td style="font-size:10px;color:var(--txm)">@defraDesc</td>
                                 <td><span class="tag @(t.TransportMode.StartsWith("Flight") ? "tag-flight" : t.TransportMode.StartsWith("Train") ? "tag-train" : "tag-car")">@t.TransportMode</span></td>
                                 <td class="mono">@t.Passengers</td>
                                 <td class="mono">@t.DistanceKm.ToString("N2")</td>
-                                <td class="mono">@t.EmissionFactor</td>
+                                <td class="mono">@t.EmissionFactor.ToString("F6")</td>
                                 <td class="mono" style="font-size:10px">@t.Formula</td>
                                 <td class="co2">@t.KgCO2e.ToString("N2")</td>
                                 <td><span class="ok-badge">@t.DistanceMethodology</span></td>
@@ -190,23 +233,27 @@
 ════════════════════════════════════════════════════════ -->
 <div class="print-only">
 
-    <!-- Document header -->
+    <!-- ── PAGE 1: Letterhead + Executive Summary + Methodology ── -->
+
     <div class="p-header">
         <div class="p-header-left">
             <div class="p-logo">CarbonTrack</div>
             <div class="p-doc-type">Carbon Emissions Audit Report</div>
+            <div class="p-org-line">@orgName@(string.IsNullOrWhiteSpace(orgEmail) ? "" : $" · {orgEmail}")</div>
         </div>
         <div class="p-header-right">
-            <div class="p-meta-row"><span class="p-meta-label">Generated</span><span>@now.ToString("dd MMMM yyyy HH:mm") UTC</span></div>
-            <div class="p-meta-row"><span class="p-meta-label">Framework</span><span>DEFRA 2025 GHG Conversion Factors</span></div>
-            <div class="p-meta-row"><span class="p-meta-label">Scope</span><span>Scope 3 Category 6 &amp; 7 — Business Travel</span></div>
+            <div class="p-meta-row"><span class="p-meta-label">Report ID</span><span style="font-weight:bold;color:#1a3a1a">@reportId</span></div>
+            <div class="p-meta-row"><span class="p-meta-label">Generated</span><span>@genUtc.ToString("dd MMMM yyyy HH:mm") UTC</span></div>
+            <div class="p-meta-row"><span class="p-meta-label">Framework</span><span>DEFRA/BEIS 2025/26 GHG Conversion Factors</span></div>
+            <div class="p-meta-row"><span class="p-meta-label">Scope</span><span>Scope 3 Categories 6 &amp; 7 — Business Travel</span></div>
+            <div class="p-meta-row"><span class="p-meta-label">Standard</span><span>GHG Protocol Corporate Standard</span></div>
         </div>
     </div>
 
     <div class="p-rule"></div>
 
-    <!-- Executive summary -->
-    <div class="p-section-title">Executive Summary</div>
+    <!-- Executive Summary -->
+    <div class="p-section-title">1. Executive Summary</div>
     <div class="p-summary-grid">
         <div class="p-kpi">
             <div class="p-kpi-val">@ViewBag.TotalTCO2e</div>
@@ -233,19 +280,29 @@
             <div class="p-kpi-label">Car/Taxi/Ferry tCO₂e</div>
         </div>
     </div>
-
-    <!-- Compliance statement -->
-    <div class="p-compliance">
-        <strong>Compliance Statement.</strong>
-        This report has been prepared in accordance with the UK Government's Department for Environment, Food &amp; Rural Affairs (DEFRA) 2025 Greenhouse Gas (GHG) Conversion Factors for Company Reporting. All flight distances are calculated using the Haversine Great Circle formula, consistent with DEFRA methodology for air travel. Road and rail distances are sourced from the Google Maps Distance Matrix API. This report is aligned with the Streamlined Energy and Carbon Reporting (SECR) framework and PPN 06/21 guidance for public sector organisations. All emission factors are expressed in kgCO₂e per kilometre and sourced from DEFRA Table 5 — Business Travel.
+    <div class="p-exec-note">
+        All emissions are expressed in tonnes of carbon dioxide equivalent (tCO₂e), combining CO₂, CH₄, and N₂O using IPCC AR5 100-year Global Warming Potentials (GWP₁₀₀).
+        Total kgCO₂e: <strong>@(((double)ViewBag.TotalKgCO2e).ToString("N2"))</strong>.
+        Reporting period: all trips in the system as at @genUtc.ToString("dd MMMM yyyy").
     </div>
 
-    <!-- Emissions by mode -->
-    <div class="p-section-title" style="margin-top:18px">Emissions by Transport Mode</div>
+    <!-- Methodology Statement -->
+    <div class="p-section-title" style="margin-top:14px">2. Methodology Statement</div>
+    <div class="p-methodology">
+        <p><strong>Emission Factor Source.</strong> All conversion factors are sourced from the UK Department for Environment, Food &amp; Rural Affairs (DEFRA) / Department for Energy Security and Net Zero (DESNZ) <em>Greenhouse Gas Conversion Factors for Company Reporting 2025/26</em>, Table 5 — Business Travel (Air, Rail, Road and Ferry). Factors are expressed in kgCO₂e per passenger-kilometre and incorporate CO₂, CH₄ and N₂O gases on an AR5 GWP₁₀₀ basis.</p>
+        <p style="margin-top:6px"><strong>Accounting Standard.</strong> This report follows the <em>GHG Protocol Corporate Accounting and Reporting Standard</em> (Revised Edition). Business travel is reported under Scope 3, Category 6 (Business Travel) and Category 7 (Employee Commuting) as applicable. The operational-control consolidation approach is applied.</p>
+        <p style="margin-top:6px"><strong>Distance Methodology.</strong> Flight distances are calculated using the Haversine Great Circle formula (shortest spherical arc between origin and destination), consistent with DEFRA guidance for air travel. Road and rail distances are retrieved from the Google Maps Distance Matrix API (driving/transit mode) and represent actual route distances, not straight-line approximations.</p>
+        <p style="margin-top:6px"><strong>Calculation Formula.</strong> For each trip: <em>Emissions (kgCO₂e) = Distance (km) × Emission Factor (kgCO₂e/km) × Number of Passengers</em>. Emission factors are applied at the 6-decimal-place precision as published by DEFRA.</p>
+        <p style="margin-top:6px"><strong>Limitations.</strong> Radiative Forcing Index (RFI) uplift has not been applied to flight emissions, consistent with DEFRA 2025 guidance which provides separate RFI-adjusted factors. This report uses the non-RFI-adjusted factors unless otherwise stated.</p>
+    </div>
+
+    <!-- Emissions by mode — PAGE CONTINUES -->
+    <div class="p-section-title" style="margin-top:14px">3. Emissions by Transport Mode (DEFRA 2025 Factors)</div>
     <table class="p-table">
         <thead>
             <tr>
-                <th>Transport Mode</th>
+                <th>DEFRA Category Description</th>
+                <th>Mode Code</th>
                 <th class="p-right">Trips</th>
                 <th class="p-right">Total km</th>
                 <th class="p-right">EF (kgCO₂e/km)</th>
@@ -255,74 +312,217 @@
             </tr>
         </thead>
         <tbody>
-            @{
-                double pTotalKg = trips.Sum(t => t.KgCO2e);
-            }
             @foreach (ModeRow row in (ViewBag.ModeBreakdown ?? new List<ModeRow>()))
             {
-                double pPct = pTotalKg > 0 ? Math.Round(row.TotalKg / pTotalKg * 100, 1) : 0;
+                double pPct = totalKgAll > 0 ? Math.Round(row.TotalKg / totalKgAll * 100, 1) : 0;
                 <tr>
-                    <td>@row.Mode</td>
+                    <td>@row.DefraDesc</td>
+                    <td style="font-size:7pt;color:#555">@row.Mode</td>
                     <td class="p-right">@row.Count</td>
                     <td class="p-right">@row.TotalKm.ToString("N1")</td>
-                    <td class="p-right">@row.AvgFactor</td>
+                    <td class="p-right p-mono">@row.AvgFactor.ToString("F6")</td>
                     <td class="p-right p-bold">@row.TotalKg.ToString("N2")</td>
-                    <td class="p-right p-bold">@row.TotalT</td>
+                    <td class="p-right p-bold">@row.TotalT.ToString("F6")</td>
                     <td class="p-right">@pPct%</td>
                 </tr>
             }
             <tr class="p-total-row">
-                <td><strong>TOTAL</strong></td>
+                <td colspan="2"><strong>TOTAL — All Modes</strong></td>
                 <td class="p-right"><strong>@ViewBag.TotalTrips</strong></td>
                 <td class="p-right"><strong>@(((double)ViewBag.TotalKm).ToString("N0"))</strong></td>
                 <td class="p-right">—</td>
-                <td class="p-right"><strong>@(Math.Round(pTotalKg, 2).ToString("N2"))</strong></td>
+                <td class="p-right"><strong>@(Math.Round(totalKgAll, 2).ToString("N2"))</strong></td>
                 <td class="p-right"><strong>@ViewBag.TotalTCO2e</strong></td>
                 <td class="p-right"><strong>100%</strong></td>
             </tr>
         </tbody>
     </table>
 
-    <!-- Full trip audit log -->
-    <div class="p-section-title p-page-break" style="margin-top:24px">Full Trip Audit Log</div>
+    <!-- ── PAGE 2: Top 10 Trips + Sample Calculation ── -->
+    <div class="p-page-break"></div>
+
+    <div class="p-header p-repeat-header">
+        <span class="p-logo" style="font-size:12pt">CarbonTrack</span>
+        <span style="font-size:7.5pt;color:#555">@orgName · @reportId · DEFRA 2025 Audit Report</span>
+        <span style="font-size:7.5pt;color:#555">@genUtc.ToString("dd MMM yyyy") UTC</span>
+    </div>
+    <div class="p-rule" style="margin-top:4px"></div>
+
+    <!-- Top 10 Trips -->
+    <div class="p-section-title">4. Top 10 Highest-Emitting Individual Trips</div>
+    <p style="font-size:7.5pt;color:#555;margin-bottom:8px">The journeys below account for the highest individual carbon emissions in the reporting period. These represent the most material trips for reduction planning and offsetting prioritisation.</p>
+    <table class="p-table">
+        <thead>
+            <tr>
+                <th class="p-right">#</th>
+                <th>Date</th>
+                <th>Origin</th>
+                <th>Destination</th>
+                <th>DEFRA Category</th>
+                <th class="p-right">Pax</th>
+                <th class="p-right">km</th>
+                <th class="p-right">EF (kgCO₂e/km)</th>
+                <th class="p-right">kgCO₂e</th>
+                <th class="p-right">tCO₂e</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{ int pRank = 1; }
+            @foreach (var t in top10)
+            {
+                var tDesc = ReportsController.DefraCategoryDesc.GetValueOrDefault(t.TransportMode, t.TransportMode);
+                <tr>
+                    <td class="p-right p-bold">@pRank</td>
+                    <td style="white-space:nowrap">@t.TripDate.ToString("dd/MM/yyyy")</td>
+                    <td>@t.Origin</td>
+                    <td>@t.Destination</td>
+                    <td style="font-size:7pt">@tDesc</td>
+                    <td class="p-right">@t.Passengers</td>
+                    <td class="p-right">@t.DistanceKm.ToString("N2")</td>
+                    <td class="p-right p-mono">@t.EmissionFactor.ToString("F6")</td>
+                    <td class="p-right p-bold">@t.KgCO2e.ToString("N4")</td>
+                    <td class="p-right">@(Math.Round(t.KgCO2e / 1000, 6).ToString("F6"))</td>
+                </tr>
+                pRank++;
+            }
+        </tbody>
+    </table>
+
+    <!-- Sample Calculation ("Seyi Special") -->
+    @if (sample != null)
+    {
+        var sDesc = ReportsController.DefraCategoryDesc.GetValueOrDefault(sample.TransportMode, sample.TransportMode);
+        <div class="p-sample-box">
+            <div class="p-sample-title">Sample Calculation — Highest-Emitting Trip (Audit Trail Reference)</div>
+            <div class="p-sample-trip">@sample.Origin → @sample.Destination &nbsp;|&nbsp; @sample.TripDate.ToString("dd MMM yyyy") &nbsp;|&nbsp; @sDesc</div>
+            <div class="p-sample-formula">
+                <span class="p-sample-step">Distance</span>
+                <span class="p-sample-op">×</span>
+                <span class="p-sample-step">Emission Factor</span>
+                <span class="p-sample-op">×</span>
+                <span class="p-sample-step">Passengers</span>
+                <span class="p-sample-op">=</span>
+                <span class="p-sample-step">kgCO₂e</span>
+            </div>
+            <div class="p-sample-values">
+                <span class="p-sample-num">@sample.DistanceKm.ToString("N2") km</span>
+                <span class="p-sample-op">×</span>
+                <span class="p-sample-num">@sample.EmissionFactor.ToString("F6") kgCO₂e/km</span>
+                <span class="p-sample-op">×</span>
+                <span class="p-sample-num">@sample.Passengers pax</span>
+                <span class="p-sample-op">=</span>
+                <span class="p-sample-result">@sample.KgCO2e.ToString("N4") kgCO₂e</span>
+                <span style="font-size:7.5pt;color:#555">(@(Math.Round(sample.KgCO2e / 1000, 6).ToString("F6")) tCO₂e)</span>
+            </div>
+            <div class="p-sample-source">Source: DEFRA/BEIS 2025/26 GHG Conversion Factors, Table 5 — Business Travel. Factor: @sDesc.</div>
+        </div>
+    }
+
+    <!-- CRP / PPN 06/21 Section -->
+    <div class="p-section-title" style="margin-top:14px">5. Carbon Reduction Plan (CRP) — PPN 06/21 Reporting Summary</div>
+    <div class="p-crp-box">
+        <p><strong>Applicability.</strong> This section is prepared in accordance with Procurement Policy Note 06/21 (PPN 06/21), which requires suppliers bidding for UK Government contracts above £5 million per annum to publish a Carbon Reduction Plan (CRP) and commit to achieving Net Zero by 2050.</p>
+        <p style="margin-top:6px"><strong>Current Emissions Position.</strong></p>
+        <table class="p-table p-table-sm" style="margin-top:4px;margin-bottom:8px">
+            <thead><tr>
+                <th>Category</th>
+                <th class="p-right">tCO₂e</th>
+                <th>Scope</th>
+                <th>GHG Protocol Category</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                    <td>Air travel (domestic &amp; international)</td>
+                    <td class="p-right">@ViewBag.FlightTCO2e</td>
+                    <td>Scope 3</td>
+                    <td>Category 6 — Business Travel</td>
+                </tr>
+                <tr>
+                    <td>Rail (national &amp; international)</td>
+                    <td class="p-right">@ViewBag.TrainTCO2e</td>
+                    <td>Scope 3</td>
+                    <td>Category 6 — Business Travel</td>
+                </tr>
+                <tr>
+                    <td>Road (car, taxi) and ferry</td>
+                    <td class="p-right">@ViewBag.CarTCO2e</td>
+                    <td>Scope 3</td>
+                    <td>Category 6 — Business Travel</td>
+                </tr>
+                <tr class="p-total-row">
+                    <td><strong>Total Business Travel Emissions</strong></td>
+                    <td class="p-right"><strong>@ViewBag.TotalTCO2e</strong></td>
+                    <td>Scope 3</td>
+                    <td>—</td>
+                </tr>
+            </tbody>
+        </table>
+        <p><strong>Commitment.</strong> @orgName commits to achieving Net Zero greenhouse gas emissions across all operations by 2050, consistent with the UK Government's Net Zero Strategy and Science Based Targets initiative (SBTi) principles. Interim reduction targets and progress are to be reviewed annually and disclosed in the organisation's published Carbon Reduction Plan.</p>
+        <p style="margin-top:6px"><strong>Reduction Measures (Business Travel).</strong> The organisation is implementing: (i) a travel hierarchy policy (virtual-first, rail-preferred, short-haul flight reduction); (ii) annual review of highest-emitting routes (see Section 4); (iii) supplier engagement on Scope 3 emissions; (iv) employee carbon literacy training.</p>
+    </div>
+
+    <!-- ── PAGE 3: Full Audit Ledger ── -->
+    <div class="p-page-break"></div>
+
+    <div class="p-header p-repeat-header">
+        <span class="p-logo" style="font-size:12pt">CarbonTrack</span>
+        <span style="font-size:7.5pt;color:#555">@orgName · @reportId · DEFRA 2025 Audit Report</span>
+        <span style="font-size:7.5pt;color:#555">@genUtc.ToString("dd MMM yyyy") UTC</span>
+    </div>
+    <div class="p-rule" style="margin-top:4px"></div>
+
+    <!-- Full Audit Ledger -->
+    <div class="p-section-title">6. Full Trip Audit Ledger</div>
+    <p style="font-size:7.5pt;color:#555;margin-bottom:8px">Complete record of all @trips.Count() business trips in the reporting period. Each row represents a unique journey event. All distances and emission calculations are traceable to DEFRA 2025 published factors.</p>
     <table class="p-table p-table-sm">
         <thead>
             <tr>
                 <th>Date</th>
                 <th>Origin</th>
                 <th>Destination</th>
-                <th>Mode</th>
+                <th>DEFRA Category Description</th>
                 <th class="p-right">Pax</th>
                 <th class="p-right">km</th>
-                <th class="p-right">EF</th>
+                <th class="p-right">EF (kgCO₂e/km)</th>
                 <th class="p-right">kgCO₂e</th>
-                <th>Methodology</th>
-                <th>DEFRA</th>
+                <th>Dist. Method</th>
+                <th>DEFRA Year</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var t in trips)
             {
+                var desc = ReportsController.DefraCategoryDesc.GetValueOrDefault(t.TransportMode, t.TransportMode);
                 <tr>
-                    <td style="white-space:nowrap">@t.TripDate.ToString("dd/MM/yyyy")</td>
+                    <td style="white-space:nowrap">@t.TripDate.ToString("dd/MM/yy")</td>
                     <td>@t.Origin</td>
                     <td>@t.Destination</td>
-                    <td style="font-size:7pt">@t.TransportMode</td>
+                    <td>@desc</td>
                     <td class="p-right">@t.Passengers</td>
                     <td class="p-right">@t.DistanceKm.ToString("N2")</td>
-                    <td class="p-right">@t.EmissionFactor</td>
-                    <td class="p-right p-bold">@t.KgCO2e.ToString("N2")</td>
-                    <td style="font-size:7pt">@t.DistanceMethodology</td>
-                    <td style="font-size:7pt">@t.DefraFactorYear</td>
+                    <td class="p-right p-mono">@t.EmissionFactor.ToString("F6")</td>
+                    <td class="p-right p-bold">@t.KgCO2e.ToString("N4")</td>
+                    <td>@t.DistanceMethodology</td>
+                    <td>@t.DefraFactorYear</td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <!-- Print footer -->
+    <!-- Data Completeness Declaration -->
+    <div class="p-section-title" style="margin-top:16px">7. Data Completeness &amp; Integrity Declaration</div>
+    <div class="p-compliance">
+        <p><strong>Data Source.</strong> All trip data is sourced from the CarbonTrack system and represents self-reported business travel by @orgName employees and contractors. Data has not been independently verified by a third party.</p>
+        <p style="margin-top:6px"><strong>Completeness.</strong> This report contains <strong>@trips.Count() trip records</strong> covering a total distance of <strong>@(((double)ViewBag.TotalKm).ToString("N0")) km</strong> and total emissions of <strong>@ViewBag.TotalKgCO2e kgCO₂e (@ViewBag.TotalTCO2e tCO₂e)</strong>. Records are believed to be materially complete for the categories covered (Scope 3, Categories 6 &amp; 7). Omissions may occur where travel was not reported through the system.</p>
+        <p style="margin-top:6px"><strong>Emission Factor Integrity.</strong> Emission factors applied in this report are the published DEFRA/BEIS 2025/26 values with 6-decimal precision. Factors are applied per passenger-kilometre for all modes. No manual adjustments or alternative factors have been applied unless documented in the trip record.</p>
+        <p style="margin-top:6px"><strong>Report Integrity.</strong> Report ID <strong>@reportId</strong> is a unique identifier generated at the time of report creation (@genUtc.ToString("dd MMMM yyyy HH:mm") UTC) and may be used for audit trail purposes. This document was generated programmatically from live data and has not been manually edited.</p>
+    </div>
+
+    <!-- Print footer — fixed on every page -->
     <div class="p-footer">
-        <span>CarbonTrack · DEFRA 2025 Audit Report · Generated @now.ToString("dd MMM yyyy")</span>
-        <span>Scope 3 Category 6 &amp; 7 — Business Travel Emissions</span>
+        <span>CarbonTrack &middot; DEFRA 2025/26 Audit Report</span>
+        <span style="font-weight:bold">@reportId</span>
+        <span>@orgName &middot; Generated @genUtc.ToString("dd MMM yyyy") UTC</span>
     </div>
 
 </div><!-- end print-only -->
@@ -343,54 +543,75 @@
     @@media print {
         @@page {
             size: A4;
-            margin: 18mm 15mm 22mm 15mm;
+            margin: 15mm 14mm 24mm 14mm;
         }
 
         .screen-only { display: none !important; }
         .print-only  { display: block !important; }
 
-        /* reset app chrome */
-        html, body { background: #fff !important; color: #111 !important; font-family: 'Georgia', serif; font-size: 9pt; }
-        .nav, .page { all: unset; display: block; }
-        .app { display: block; }
+        html, body { background: #fff !important; color: #111 !important; font-family: 'Georgia', serif; font-size: 8.5pt; }
+        .nav  { display: none !important; }
+        .page { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+        .app  { display: block; }
 
         /* header */
-        .p-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-        .p-header-left {}
-        .p-logo { font-family: 'Georgia', serif; font-size: 18pt; font-weight: bold; color: #1a3a1a; letter-spacing: -0.02em; }
-        .p-doc-type { font-size: 10pt; color: #444; margin-top: 2px; letter-spacing: 0.03em; text-transform: uppercase; }
+        .p-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .p-logo   { font-family: 'Georgia', serif; font-size: 20pt; font-weight: bold; color: #1a3a1a; letter-spacing: -0.02em; display: block; }
+        .p-doc-type  { font-size: 9.5pt; color: #333; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .p-org-line  { font-size: 8pt; color: #666; margin-top: 2px; }
         .p-header-right { text-align: right; }
-        .p-meta-row { font-size: 7.5pt; color: #555; margin-bottom: 2px; display: flex; gap: 8px; justify-content: flex-end; }
+        .p-meta-row  { font-size: 7.5pt; color: #555; margin-bottom: 2px; display: flex; gap: 8px; justify-content: flex-end; }
         .p-meta-label { color: #999; min-width: 70px; text-align: right; }
-        .p-rule { border: none; border-top: 2px solid #1a3a1a; margin: 8px 0 14px; }
+        .p-rule  { border: none; border-top: 2.5px solid #1a3a1a; margin: 8px 0 12px; }
+        .p-repeat-header { margin-bottom: 0; padding-bottom: 4px; }
 
-        /* sections */
-        .p-section-title { font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #1a3a1a; margin-bottom: 6px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+        /* section titles */
+        .p-section-title { font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.09em; color: #1a3a1a; margin-bottom: 6px; border-bottom: 1px solid #bbb; padding-bottom: 3px; }
 
-        /* KPI summary grid */
-        .p-summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 14px; }
-        .p-kpi { border: 1px solid #ddd; border-radius: 4px; padding: 8px 10px; text-align: center; }
-        .p-kpi-val { font-size: 14pt; font-weight: bold; color: #1a3a1a; line-height: 1.1; }
-        .p-kpi-label { font-size: 7pt; color: #666; margin-top: 2px; }
+        /* executive summary */
+        .p-summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; margin-bottom: 10px; }
+        .p-kpi { border: 1px solid #ddd; border-radius: 4px; padding: 7px 8px; text-align: center; }
+        .p-kpi-val   { font-size: 13pt; font-weight: bold; color: #1a3a1a; line-height: 1.1; }
+        .p-kpi-label { font-size: 6.5pt; color: #666; margin-top: 2px; }
+        .p-exec-note { font-size: 7.5pt; color: #555; line-height: 1.5; background: #f5f9f5; border-left: 3px solid #1a3a1a; padding: 6px 10px; margin-bottom: 4px; }
 
-        /* compliance box */
-        .p-compliance { background: #f8f8f8; border-left: 3px solid #1a3a1a; padding: 8px 12px; font-size: 7.5pt; color: #333; line-height: 1.5; margin-bottom: 6px; }
+        /* methodology */
+        .p-methodology { font-size: 7.5pt; color: #333; line-height: 1.55; border: 1px solid #ddd; border-radius: 3px; padding: 9px 12px; margin-bottom: 4px; }
+        .p-methodology p { margin: 0; }
 
         /* tables */
-        .p-table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 8px; }
-        .p-table th { background: #1a3a1a; color: #fff; padding: 5px 7px; text-align: left; font-size: 7pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; }
-        .p-table td { padding: 4px 7px; border-bottom: 1px solid #eee; color: #222; vertical-align: top; }
+        .p-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; margin-bottom: 8px; }
+        .p-table th { background: #1a3a1a; color: #fff; padding: 5px 6px; text-align: left; font-size: 6.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; }
+        .p-table td { padding: 3.5px 6px; border-bottom: 1px solid #eee; color: #222; vertical-align: top; }
         .p-table tr:nth-child(even) td { background: #f9f9f9; }
         .p-right { text-align: right; }
-        .p-bold { font-weight: bold; }
-        .p-total-row td { background: #eef4ee !important; border-top: 2px solid #1a3a1a; font-size: 8.5pt; }
-        .p-table-sm { font-size: 7.5pt; }
-        .p-table-sm td, .p-table-sm th { padding: 3px 5px; }
+        .p-bold  { font-weight: bold; }
+        .p-mono  { font-family: 'Courier New', monospace; font-size: 7pt; }
+        .p-total-row td { background: #e8f0e8 !important; border-top: 2px solid #1a3a1a; font-size: 8pt; }
+        .p-table-sm td, .p-table-sm th { padding: 3px 5px; font-size: 7pt; }
 
-        /* page break before audit log */
-        .p-page-break { page-break-before: always; padding-top: 4px; }
+        /* compliance / CRP */
+        .p-compliance { background: #f8f8f8; border-left: 3px solid #1a3a1a; padding: 8px 12px; font-size: 7.5pt; color: #333; line-height: 1.5; }
+        .p-compliance p { margin: 0; }
+        .p-crp-box { border: 1px solid #c8d8c8; border-radius: 3px; padding: 9px 12px; font-size: 7.5pt; color: #333; line-height: 1.5; }
+        .p-crp-box p { margin: 0; }
 
-        /* footer */
-        .p-footer { position: fixed; bottom: 8mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 7pt; color: #888; border-top: 1px solid #ddd; padding-top: 4px; }
+        /* sample calculation */
+        .p-sample-box { border: 1.5px solid #1a3a1a; border-radius: 4px; padding: 10px 14px; margin-top: 12px; background: #f5f9f5; }
+        .p-sample-title { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #1a3a1a; margin-bottom: 5px; }
+        .p-sample-trip  { font-size: 8pt; color: #333; margin-bottom: 8px; font-style: italic; }
+        .p-sample-formula { display: flex; gap: 8px; align-items: center; font-size: 7pt; color: #777; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+        .p-sample-values  { display: flex; gap: 8px; align-items: center; font-size: 9pt; }
+        .p-sample-step  { border-bottom: 1px dotted #999; }
+        .p-sample-num   { font-weight: bold; color: #1a3a1a; font-family: 'Courier New', monospace; }
+        .p-sample-op    { color: #888; }
+        .p-sample-result { font-size: 11pt; font-weight: bold; color: #1a3a1a; }
+        .p-sample-source { font-size: 6.5pt; color: #777; margin-top: 6px; font-style: italic; }
+
+        /* page breaks */
+        .p-page-break { page-break-before: always; padding-top: 0; }
+
+        /* fixed footer on every page */
+        .p-footer { position: fixed; bottom: 8mm; left: 14mm; right: 14mm; display: flex; justify-content: space-between; font-size: 6.5pt; color: #888; border-top: 1px solid #ccc; padding-top: 4px; }
     }
 </style>
