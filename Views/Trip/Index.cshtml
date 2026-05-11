@@ -92,14 +92,16 @@
                 {
                     <tr>
                         <td style="color:var(--txm)">@trip.TripDate.ToString("dd MMM yyyy")</td>
-                        <td><strong>@trip.RouteDescription</strong></td>
+                        <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="@trip.RouteDescription">
+                            <strong>@trip.RouteDescription</strong>
+                        </td>
                         <td>
                             <span class="tag @(trip.TransportMode.StartsWith("Flight") ? "tag-flight" : trip.TransportMode.StartsWith("Train") ? "tag-train" : "tag-car")">
-                                @trip.TransportMode
+                                @(trip.Waypoints != null ? "Multi-leg" : trip.TransportMode)
                             </span>
                         </td>
                         <td class="mono">@trip.DistanceKm</td>
-                        <td class="mono">@trip.EmissionFactor</td>
+                        <td class="mono">@(trip.EmissionFactor > 0 ? trip.EmissionFactor.ToString() : (trip.Waypoints != null ? "per-leg" : "–"))</td>
                         <td class="mono">@trip.Formula</td>
                         <td class="co2">@trip.KgCO2e</td>
                         <td><span class="ok-badge">@trip.DistanceMethodology</span></td>

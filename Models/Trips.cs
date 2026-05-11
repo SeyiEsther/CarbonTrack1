@@ -24,8 +24,20 @@ namespace CarbonTrack.Models
                 if (string.IsNullOrWhiteSpace(Waypoints)) return $"{Origin} → {Destination}";
                 try
                 {
-                    var mid = System.Text.Json.JsonSerializer.Deserialize<string[]>(Waypoints) ?? [];
-                    return string.Join(" → ", new[] { Origin }.Concat(mid).Append(Destination));
+                    using var doc  = System.Text.Json.JsonDocument.Parse(Waypoints);
+                    var root       = doc.RootElement;
+                    if (root.ValueKind != System.Text.Json.JsonValueKind.Array || root.GetArrayLength() == 0)
+                        return $"{Origin} → {Destination}";
+
+                    // Legs JSON: [{from, to, mode, ...}, ...]
+                    var stops = new System.Collections.Generic.List<string>();
+                    if (root[0].TryGetProperty("from", out var fromEl))
+                        stops.Add(fromEl.GetString() ?? Origin);
+                    foreach (var leg in root.EnumerateArray())
+                        if (leg.TryGetProperty("to", out var toEl))
+                            stops.Add(toEl.GetString() ?? "");
+                    var result = string.Join(" → ", stops.Where(s => !string.IsNullOrEmpty(s)));
+                    return string.IsNullOrEmpty(result) ? $"{Origin} → {Destination}" : result;
                 }
                 catch { return $"{Origin} → {Destination}"; }
             }

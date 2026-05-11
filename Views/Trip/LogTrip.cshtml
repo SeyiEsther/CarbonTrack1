@@ -13,125 +13,136 @@
 }
 
 <style>
-    .log-layout { display: flex; gap: 24px; align-items: flex-start; }
-    .log-form-col { flex: 0 0 480px; }
-    .log-map-col { flex: 1; position: sticky; top: 24px; }
+    .log-layout   { display:flex; gap:24px; align-items:flex-start; }
+    .log-form-col { flex:0 0 500px; }
+    .log-map-col  { flex:1; position:sticky; top:24px; }
 
     /* Route builder */
-    .route-builder { display: flex; flex-direction: column; gap: 0; margin-bottom: 4px; }
-    .route-stop { display: flex; align-items: center; gap: 10px; position: relative; }
-    .route-stop + .route-stop::before {
-        content: '';
-        position: absolute;
-        left: 14px; top: -12px;
-        width: 2px; height: 12px;
-        background: var(--bda);
-    }
+    .route-builder { display:flex; flex-direction:column; }
+
+    .route-stop { display:flex; align-items:center; gap:10px; }
+
     .stop-dot {
-        width: 28px; height: 28px; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 11px; font-weight: 700; flex-shrink: 0;
-        border: 2px solid;
+        width:28px; height:28px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; flex-shrink:0; border:2px solid;
     }
-    .stop-dot-origin { background: rgba(29,158,117,0.15); border-color: #1D9E75; color: #1D9E75; }
-    .stop-dot-via    { background: rgba(197,180,227,0.12); border-color: #C5B4E3; color: #C5B4E3; }
-    .stop-dot-dest   { background: rgba(239,68,68,0.1);   border-color: rgba(239,68,68,0.5); color: rgba(239,68,68,0.8); }
+    .stop-dot-origin { background:rgba(29,158,117,0.15);  border-color:#1D9E75;           color:#1D9E75; }
+    .stop-dot-via    { background:rgba(197,180,227,0.12); border-color:#C5B4E3;            color:#C5B4E3; }
+    .stop-dot-dest   { background:rgba(239,68,68,0.1);   border-color:rgba(239,68,68,.5); color:rgba(239,68,68,.8); }
+
     .route-stop input[type=text] {
-        flex: 1;
-        background: var(--bg3);
-        border: 1px solid var(--bda);
-        border-radius: 8px;
-        padding: 9px 12px;
-        font-size: 13px;
-        color: var(--tx);
-        outline: none;
-        transition: border-color 0.15s;
+        flex:1; background:var(--bg3); border:1px solid var(--bda);
+        border-radius:8px; padding:9px 12px; font-size:13px; color:var(--tx);
+        outline:none; transition:border-color .15s;
     }
-    .route-stop input[type=text]:focus { border-color: #1D9E75; }
+    .route-stop input[type=text]:focus { border-color:#1D9E75; }
+
     .remove-stop-btn {
-        background: none; border: none;
-        color: rgba(239,68,68,0.5); cursor: pointer;
-        font-size: 16px; line-height: 1;
-        padding: 4px 6px; border-radius: 4px;
-        transition: color 0.15s;
+        background:none; border:none; color:rgba(239,68,68,.4); cursor:pointer;
+        font-size:18px; line-height:1; padding:2px 5px; border-radius:4px;
+        transition:color .15s; flex-shrink:0;
     }
-    .remove-stop-btn:hover { color: rgba(239,68,68,1); }
+    .remove-stop-btn:hover { color:rgba(239,68,68,1); }
+
+    /* Leg mode connector (between consecutive stops) */
+    .leg-connector {
+        display:flex; align-items:center; gap:8px;
+        padding:5px 0 5px 38px; /* 28px dot + 10px gap = indent */
+    }
+    .connector-via {
+        font-size:10px; color:var(--lv); text-transform:uppercase;
+        letter-spacing:.05em; flex-shrink:0; white-space:nowrap;
+    }
+    .leg-mode-select {
+        flex:1; background:var(--bg3); border:1px solid var(--bda);
+        border-radius:6px; padding:5px 8px; font-size:12px; color:var(--tx);
+        outline:none; cursor:pointer; transition:border-color .15s;
+    }
+    .leg-mode-select:focus { border-color:#1D9E75; }
+
+    /* Track line between stops */
+    .leg-connector::before {
+        content:''; display:block; width:2px;
+        height:18px; background:var(--bda);
+        position:absolute; left:13px; /* center of 28px dot */
+        margin-top:-18px; /* pulls up to previous element */
+        pointer-events:none;
+    }
+    .route-builder { position:relative; }
+
     .add-stop-btn {
-        display: inline-flex; align-items: center; gap: 6px;
-        background: none; border: 1px dashed var(--bda);
-        border-radius: 8px; padding: 8px 14px;
-        font-size: 12px; color: #C5B4E3; cursor: pointer;
-        width: 100%; margin-top: 10px;
-        transition: border-color 0.15s, color 0.15s;
+        display:inline-flex; align-items:center; gap:6px;
+        background:none; border:1px dashed var(--bda); border-radius:8px;
+        padding:8px 14px; font-size:12px; color:#C5B4E3; cursor:pointer;
+        width:100%; margin-top:10px; transition:border-color .15s, color .15s;
     }
-    .add-stop-btn:hover { border-color: #C5B4E3; color: #fff; }
+    .add-stop-btn:hover { border-color:#C5B4E3; color:#fff; }
 
     /* Return toggle */
-    .return-toggle { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--lvl); border: 1px solid var(--bda); border-radius: 8px; margin-bottom: 14px; cursor: pointer; user-select: none; }
-    .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: var(--bda); position: relative; transition: background 0.2s; flex-shrink: 0; }
-    .toggle-track.on { background: #1D9E75; }
-    .toggle-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-    .toggle-track.on .toggle-thumb { left: 18px; }
-    .toggle-label { font-size: 13px; font-weight: 600; }
-    .toggle-sub { font-size: 11px; color: var(--lv); margin-top: 1px; }
+    .return-toggle {
+        display:flex; align-items:center; gap:12px; padding:12px 14px;
+        background:var(--lvl); border:1px solid var(--bda); border-radius:8px;
+        margin-bottom:14px; cursor:pointer; user-select:none;
+    }
+    .toggle-track { width:36px; height:20px; border-radius:10px; background:var(--bda); position:relative; transition:background .2s; flex-shrink:0; }
+    .toggle-track.on { background:#1D9E75; }
+    .toggle-thumb { width:16px; height:16px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .toggle-track.on .toggle-thumb { left:18px; }
+    .toggle-label { font-size:13px; font-weight:600; }
+    .toggle-sub   { font-size:11px; color:var(--lv); margin-top:1px; }
 
     /* Map */
-    .map-card { background: var(--bg2); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden; }
-    .map-header { padding: 12px 16px; border-bottom: 1px solid var(--bd); display: flex; justify-content: space-between; align-items: center; }
-    .map-title { font-size: 13px; font-weight: 600; }
-    .map-meta { font-size: 11px; color: var(--lv); }
-    #gmap { width: 100%; height: 300px; background: #1a2535; display: block; }
-    .em-preview { display: flex; border-top: 1px solid var(--bd); }
-    .em-stat { flex: 1; padding: 14px 16px; text-align: center; border-right: 1px solid var(--bd); }
-    .em-stat:last-child { border-right: none; }
-    .em-label { font-size: 10px; color: var(--lv); text-transform: uppercase; letter-spacing: 0.05em; }
-    .em-value { font-size: 20px; font-weight: 600; margin-top: 3px; }
-    .em-unit { font-size: 10px; color: var(--lv); }
+    .map-card   { background:var(--bg2); border:1px solid var(--bd); border-radius:12px; overflow:hidden; }
+    .map-header { padding:12px 16px; border-bottom:1px solid var(--bd); display:flex; justify-content:space-between; align-items:center; }
+    .map-title  { font-size:13px; font-weight:600; }
+    .map-meta   { font-size:11px; color:var(--lv); }
+    #gmap       { width:100%; height:300px; background:#1a2535; display:block; }
 
-    /* Leg breakdown */
-    .leg-breakdown { font-size: 11px; color: var(--lv); padding: 10px 16px; border-top: 1px solid var(--bd); display: none; }
-    .leg-row { display: flex; justify-content: space-between; padding: 2px 0; }
-    .leg-route { color: var(--txm); }
-    .leg-kg { color: #1D9E75; font-weight: 600; }
+    .em-preview { display:flex; border-top:1px solid var(--bd); }
+    .em-stat { flex:1; padding:14px 16px; text-align:center; border-right:1px solid var(--bd); }
+    .em-stat:last-child { border-right:none; }
+    .em-label { font-size:10px; color:var(--lv); text-transform:uppercase; letter-spacing:.05em; }
+    .em-value { font-size:20px; font-weight:600; margin-top:3px; }
+    .em-unit  { font-size:10px; color:var(--lv); }
+
+    .leg-breakdown { font-size:11px; color:var(--lv); padding:10px 16px; border-top:1px solid var(--bd); display:none; }
+    .leg-row { display:flex; justify-content:space-between; align-items:center; padding:2px 0; gap:8px; }
+    .leg-route { color:var(--txm); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .leg-kg { color:#1D9E75; font-weight:600; flex-shrink:0; }
 
     /* Google Places dropdown */
-    .pac-container {
-        background: #1a2a1a; border: 1px solid rgba(197,180,227,0.25);
-        border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        font-family: 'DM Sans', sans-serif; margin-top: 3px;
-    }
-    .pac-container::after { display: none; }
-    .pac-item {
-        padding: 9px 14px; font-size: 13px;
-        color: rgba(255,255,255,0.8);
-        border-top: 1px solid rgba(255,255,255,0.05);
-        cursor: pointer; line-height: 1.4;
-    }
-    .pac-item:first-child { border-top: none; }
-    .pac-item:hover, .pac-item-selected { background: rgba(197,180,227,0.12); }
-    .pac-item-query { color: #ffffff; font-size: 13px; }
-    .pac-matched { color: #C5B4E3; font-weight: 600; }
-    .pac-icon, .hdpi .pac-icon { display: none; }
+    .pac-container { background:#1a2a1a; border:1px solid rgba(197,180,227,.25); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.4); font-family:'DM Sans',sans-serif; margin-top:3px; }
+    .pac-container::after { display:none; }
+    .pac-item { padding:9px 14px; font-size:13px; color:rgba(255,255,255,.8); border-top:1px solid rgba(255,255,255,.05); cursor:pointer; line-height:1.4; }
+    .pac-item:first-child { border-top:none; }
+    .pac-item:hover, .pac-item-selected { background:rgba(197,180,227,.12); }
+    .pac-item-query { color:#fff; font-size:13px; }
+    .pac-matched { color:#C5B4E3; font-weight:600; }
+    .pac-icon, .hdpi .pac-icon { display:none; }
 </style>
 
 <div class="mb-6">
     <h1 class="page-title">Log a trip</h1>
-    <p class="page-sub">DEFRA 2025 factors · distances calculated automatically · supports multi-leg routes with layovers</p>
+    <p class="page-sub">DEFRA 2025 factors · distances calculated automatically · multi-leg routes supported</p>
 </div>
 
 <div class="log-layout">
 
     <div class="log-form-col">
         <div class="info-box">
-            <strong>How distances are calculated:</strong><br>
-            Flights use the <strong>Haversine Great Circle formula</strong> — the only DEFRA-compliant method for air travel.
-            Road and rail use the <strong>Google Maps Distance Matrix API</strong> for actual route distances.
-            Each leg of a multi-stop journey is calculated separately and summed.
+            <strong>Multi-leg routes:</strong> Use "Add stopover / layover" to add intermediate cities.
+            Each leg can have its own transport mode — useful for mixed journeys (e.g. flight then rail).
+            Every leg is calculated separately and the full audit trail is stored.
         </div>
+
+        <!-- Client-side validation error -->
+        <div id="client-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;color:#fca5a5;font-size:13px;"></div>
 
         <div class="form-card">
             <form method="post" asp-action="LogTrip" onsubmit="return onFormSubmit()">
                 @Html.AntiForgeryToken()
+                <!-- Populated by JS before submit; contains JSON array of leg objects -->
                 <input type="hidden" id="waypoints-json" name="Waypoints" value="" />
 
                 <div class="grid-2">
@@ -145,67 +156,79 @@
                     </div>
                 </div>
 
-                <!-- Route builder -->
+                <!-- Route builder: Origin → [leg mode] → (stops) → Destination -->
                 <div class="fg" style="margin-bottom:14px">
-                    <label style="margin-bottom:10px;display:block">Route</label>
+                    <label style="display:block;margin-bottom:10px">Route</label>
+
                     <div class="route-builder" id="route-builder">
+
+                        <!-- Origin -->
                         <div class="route-stop" id="stop-row-origin">
                             <div class="stop-dot stop-dot-origin">A</div>
-                            <input type="text" asp-for="Origin" id="origin-input" placeholder="Origin — e.g. London, New York" required autocomplete="off" />
+                            <input type="text" asp-for="Origin" id="origin-input"
+                                   placeholder="Origin — e.g. London, New York" required autocomplete="off" />
                         </div>
+
+                        <!-- Leg 0 connector: always present; mode for Origin → first stop or Destination -->
+                        <div class="leg-connector" id="leg-mode-0">
+                            <span class="connector-via">via</span>
+                            <select class="leg-mode-select" id="leg-mode-select-0" onchange="updatePreview()">
+                                <optgroup label="Flights">
+                                    <option value="Flight-Domestic">Flight — Domestic</option>
+                                    <option value="Flight-ShortHaul-Economy">Flight — Short Haul Economy</option>
+                                    <option value="Flight-ShortHaul-Business">Flight — Short Haul Business</option>
+                                    <option value="Flight-LongHaul-Economy" selected>Flight — Long Haul Economy</option>
+                                    <option value="Flight-LongHaul-Business">Flight — Long Haul Business</option>
+                                    <option value="Flight-LongHaul-First">Flight — Long Haul First</option>
+                                </optgroup>
+                                <optgroup label="Rail">
+                                    <option value="Train-National">Train — National Rail</option>
+                                    <option value="Train-International">Train — International</option>
+                                </optgroup>
+                                <optgroup label="Road">
+                                    <option value="Car-Petrol">Car — Average Petrol</option>
+                                    <option value="Car-Diesel">Car — Average Diesel</option>
+                                    <option value="Car-Hybrid">Car — Average Hybrid</option>
+                                    <option value="Car-Electric">Car — Average Electric</option>
+                                    <option value="Taxi">Taxi</option>
+                                </optgroup>
+                                <optgroup label="Ferry">
+                                    <option value="Ferry-Foot">Ferry — Foot Passenger</option>
+                                    <option value="Ferry-Car">Ferry — Car Passenger</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Dynamic intermediate stops inserted here -->
                         <div id="stopovers-container"></div>
+
+                        <!-- Destination -->
                         <div class="route-stop" id="stop-row-dest">
                             <div class="stop-dot stop-dot-dest">B</div>
-                            <input type="text" asp-for="Destination" id="dest-input" placeholder="Destination — e.g. Singapore, Dubai" required autocomplete="off" />
+                            <input type="text" asp-for="Destination" id="dest-input"
+                                   placeholder="Destination — e.g. Singapore, Dubai" required autocomplete="off" />
                         </div>
+
                     </div>
+
                     <button type="button" class="add-stop-btn" onclick="addStopover()">
                         + Add stopover / layover
                     </button>
                 </div>
 
-                <div class="grid-2">
-                    <div class="fg">
-                        <label>Transport mode</label>
-                        <select asp-for="TransportMode" id="mode" required onchange="updatePreview()">
-                            <optgroup label="Flights">
-                                <option value="Flight-Domestic">Flight — Domestic</option>
-                                <option value="Flight-ShortHaul-Economy">Flight — Short Haul Economy</option>
-                                <option value="Flight-ShortHaul-Business">Flight — Short Haul Business</option>
-                                <option value="Flight-LongHaul-Economy">Flight — Long Haul Economy</option>
-                                <option value="Flight-LongHaul-Business">Flight — Long Haul Business</option>
-                                <option value="Flight-LongHaul-First">Flight — Long Haul First</option>
-                            </optgroup>
-                            <optgroup label="Rail">
-                                <option value="Train-National">Train — National Rail</option>
-                                <option value="Train-International">Train — International</option>
-                            </optgroup>
-                            <optgroup label="Road">
-                                <option value="Car-Petrol">Car — Average Petrol</option>
-                                <option value="Car-Diesel">Car — Average Diesel</option>
-                                <option value="Car-Hybrid">Car — Average Hybrid</option>
-                                <option value="Car-Electric">Car — Average Electric</option>
-                                <option value="Taxi">Taxi</option>
-                            </optgroup>
-                            <optgroup label="Ferry">
-                                <option value="Ferry-Foot">Ferry — Foot Passenger</option>
-                                <option value="Ferry-Car">Ferry — Car Passenger</option>
-                            </optgroup>
-                        </select>
-                    </div>
-                    <div class="fg">
-                        <label>Notes (optional)</label>
-                        <input type="text" asp-for="TravelClass" placeholder="e.g. client visit, conference" />
-                    </div>
+                <!-- Notes (optional) -->
+                <div class="fg" style="margin-bottom:14px">
+                    <label>Notes (optional)</label>
+                    <input type="text" asp-for="TravelClass" placeholder="e.g. client visit, conference" />
                 </div>
 
-                <!-- Return trip toggle (hidden when stopovers are present) -->
+                <!-- Return toggle — hidden when stopovers present -->
                 <div id="return-toggle-wrap">
                     <div class="return-toggle" onclick="toggleReturn()">
                         <div id="ret-track" class="toggle-track"><div class="toggle-thumb"></div></div>
                         <div>
                             <div class="toggle-label">Return trip</div>
-                            <div class="toggle-sub" id="ret-sub">Include the journey back (same route reversed)</div>
+                            <div class="toggle-sub">Include the same journey back</div>
                         </div>
                     </div>
                 </div>
@@ -214,18 +237,18 @@
                     Calculating distances and DEFRA 2025 emissions for all legs…
                 </div>
 
-                <button type="submit" class="btn-submit">Calculate & save trip →</button>
+                <button type="submit" class="btn-submit">Calculate &amp; save trip →</button>
                 <a href="/Trip" class="btn-back">← Back to trip log</a>
             </form>
         </div>
     </div>
 
-    <!-- Map column -->
+    <!-- Map + preview column -->
     <div class="log-map-col">
         <div class="map-card">
             <div class="map-header">
                 <div class="map-title" id="map-title">Route map</div>
-                <div class="map-meta" id="map-meta">Enter origin and destination</div>
+                <div class="map-meta"  id="map-meta">Enter origin and destination</div>
             </div>
             <div id="gmap"></div>
             <div class="em-preview" id="em-preview" style="display:none">
@@ -245,257 +268,371 @@
                     <div class="em-unit">kgCO₂e</div>
                 </div>
             </div>
+            <!-- Per-leg breakdown shown when > 1 leg -->
             <div class="leg-breakdown" id="leg-breakdown"></div>
         </div>
         <p style="font-size:11px;color:var(--lv);margin-top:8px;padding:0 4px">
-            * Preview uses Haversine estimates. Final figures calculated server-side with DEFRA 2025 factors and precise distances.
+            * Preview uses Haversine estimates. Server-side uses DEFRA 2025 factors with precise distances per leg.
         </p>
     </div>
 
 </div>
 
 <script>
-    // DEFRA 2025 emission factors
-    const EF = {
-        'Flight-Domestic': 0.255133, 'Flight-ShortHaul-Economy': 0.153180, 'Flight-ShortHaul-Business': 0.229770,
-        'Flight-LongHaul-Economy': 0.147613, 'Flight-LongHaul-Business': 0.429234, 'Flight-LongHaul-First': 0.590454,
-        'Train-National': 0.035390, 'Train-International': 0.004130,
-        'Car-Petrol': 0.168330, 'Car-Diesel': 0.163050, 'Car-Hybrid': 0.106850, 'Car-Electric': 0.052690,
-        'Taxi': 0.149780, 'Ferry-Foot': 0.018820, 'Ferry-Car': 0.128860
-    };
-    const VEHICLE_KM = new Set(['Car-Petrol','Car-Diesel','Car-Hybrid','Car-Electric','Taxi','Ferry-Car']);
+// ── DEFRA 2025 emission factors (mirror of server-side) ───────────────────────
+const EF = {
+    'Flight-Domestic':0.255133,'Flight-ShortHaul-Economy':0.153180,'Flight-ShortHaul-Business':0.229770,
+    'Flight-LongHaul-Economy':0.147613,'Flight-LongHaul-Business':0.429234,'Flight-LongHaul-First':0.590454,
+    'Train-National':0.035390,'Train-International':0.004130,
+    'Car-Petrol':0.168330,'Car-Diesel':0.163050,'Car-Hybrid':0.106850,'Car-Electric':0.052690,
+    'Taxi':0.149780,'Ferry-Foot':0.018820,'Ferry-Car':0.128860
+};
+const VEHICLE_KM = new Set(['Car-Petrol','Car-Diesel','Car-Hybrid','Car-Electric','Taxi','Ferry-Car']);
 
-    // Stop state: origin and dest are in state; midStops is the array of intermediate stops
-    let state = { origin: null, dest: null, isReturn: false };
-    let midStops = []; // { id, city: {name, lat, lng} | null }
-    let stopCounter = 0;
-    let gmap = null, routeLines = [], markers = [];
+// ── Mode options HTML (reused when creating new leg connectors) ───────────────
+const MODE_OPTIONS_HTML = `
+    <optgroup label="Flights">
+        <option value="Flight-Domestic">Flight — Domestic</option>
+        <option value="Flight-ShortHaul-Economy">Flight — Short Haul Economy</option>
+        <option value="Flight-ShortHaul-Business">Flight — Short Haul Business</option>
+        <option value="Flight-LongHaul-Economy">Flight — Long Haul Economy</option>
+        <option value="Flight-LongHaul-Business">Flight — Long Haul Business</option>
+        <option value="Flight-LongHaul-First">Flight — Long Haul First</option>
+    </optgroup>
+    <optgroup label="Rail">
+        <option value="Train-National">Train — National Rail</option>
+        <option value="Train-International">Train — International</option>
+    </optgroup>
+    <optgroup label="Road">
+        <option value="Car-Petrol">Car — Average Petrol</option>
+        <option value="Car-Diesel">Car — Average Diesel</option>
+        <option value="Car-Hybrid">Car — Average Hybrid</option>
+        <option value="Car-Electric">Car — Average Electric</option>
+        <option value="Taxi">Taxi</option>
+    </optgroup>
+    <optgroup label="Ferry">
+        <option value="Ferry-Foot">Ferry — Foot Passenger</option>
+        <option value="Ferry-Car">Ferry — Car Passenger</option>
+    </optgroup>`;
 
-    const MAP_STYLES = [
-        { elementType: 'geometry', stylers: [{ color: '#1e2d3d' }] },
-        { elementType: 'labels.text.stroke', stylers: [{ color: '#1a2535' }] },
-        { elementType: 'labels.text.fill', stylers: [{ color: '#6a8fa8' }] },
-        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#12202e' }] },
-        { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#1e2d3d' }] },
-        { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#2e4f6a' }, { weight: 0.8 }] },
-        { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#6a8fa8' }] },
-        { featureType: 'road', stylers: [{ visibility: 'off' }] },
-        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-        { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-    ];
+// ── State ─────────────────────────────────────────────────────────────────────
+let state     = { origin: null, dest: null, isReturn: false };
+let midStops  = []; // { id, city: {name,lat,lng}|null }
+let stopCounter = 0;
+let gmap = null, routeLines = [], markers = [];
 
-    function initGoogleMap() {
-        gmap = new google.maps.Map(document.getElementById('gmap'), {
-            center: { lat: 30, lng: 10 }, zoom: 2,
-            styles: MAP_STYLES, disableDefaultUI: true, zoomControl: true,
-            zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP },
-        });
-        setupPlacesAC('origin-input', c => { state.origin = c; updatePreview(); });
-        setupPlacesAC('dest-input',   c => { state.dest   = c; updatePreview(); });
-    }
+// ── Google Maps init ──────────────────────────────────────────────────────────
+const MAP_STYLES = [
+    {elementType:'geometry',             stylers:[{color:'#1e2d3d'}]},
+    {elementType:'labels.text.stroke',   stylers:[{color:'#1a2535'}]},
+    {elementType:'labels.text.fill',     stylers:[{color:'#6a8fa8'}]},
+    {featureType:'water', elementType:'geometry', stylers:[{color:'#12202e'}]},
+    {featureType:'landscape', elementType:'geometry', stylers:[{color:'#1e2d3d'}]},
+    {featureType:'administrative.country', elementType:'geometry.stroke', stylers:[{color:'#2e4f6a'},{weight:0.8}]},
+    {featureType:'administrative.locality', elementType:'labels.text.fill', stylers:[{color:'#6a8fa8'}]},
+    {featureType:'road',    stylers:[{visibility:'off'}]},
+    {featureType:'poi',     stylers:[{visibility:'off'}]},
+    {featureType:'transit', stylers:[{visibility:'off'}]},
+];
 
-    function setupPlacesAC(inputId, onSelect) {
-        const input = document.getElementById(inputId);
-        if (!input) return;
-        const ac = new google.maps.places.Autocomplete(input, { types: ['(cities)'], fields: ['name', 'geometry'] });
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
-        ac.addListener('place_changed', () => {
-            const place = ac.getPlace();
-            if (!place.geometry?.location) return;
-            onSelect({ name: place.name, lat: place.geometry.location.lat(), lng: place.geometry.location.lng() });
-        });
-    }
+function initGoogleMap() {
+    gmap = new google.maps.Map(document.getElementById('gmap'), {
+        center:{lat:30,lng:10}, zoom:2, styles:MAP_STYLES,
+        disableDefaultUI:true, zoomControl:true,
+        zoomControlOptions:{position:google.maps.ControlPosition.RIGHT_TOP},
+    });
+    setupPlacesAC('origin-input', c => { state.origin = c; updatePreview(); });
+    setupPlacesAC('dest-input',   c => { state.dest   = c; updatePreview(); });
+}
 
-    // ── Stopover management ──────────────────────────────────────────────────
+function setupPlacesAC(inputId, onSelect) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const ac = new google.maps.places.Autocomplete(input, {types:['(cities)'], fields:['name','geometry']});
+    input.addEventListener('keydown', e => { if (e.key==='Enter') e.preventDefault(); });
+    ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if (!place.geometry?.location) return;
+        onSelect({ name:place.name, lat:place.geometry.location.lat(), lng:place.geometry.location.lng() });
+    });
+}
 
-    function addStopover() {
-        const id = ++stopCounter;
-        const stop = { id, city: null };
-        midStops.push(stop);
+// ── Stopover management ───────────────────────────────────────────────────────
 
-        // Insert new stop row before the destination row
-        const destRow = document.getElementById('stop-row-dest');
-        const div = document.createElement('div');
-        div.className = 'route-stop';
-        div.id = `stop-row-${id}`;
-        div.innerHTML = `
-            <div class="stop-dot stop-dot-via">●</div>
-            <input type="text" id="stop-input-${id}" placeholder="Stopover city — e.g. Frankfurt" autocomplete="off" />
-            <button type="button" class="remove-stop-btn" onclick="removeStopover(${id})" title="Remove stop">×</button>`;
-        destRow.parentNode.insertBefore(div, destRow);
+function addStopover() {
+    // Capture current last leg mode BEFORE modifying state
+    const prevMode = getLastModeSelectValue();
+    const id = ++stopCounter;
+    midStops.push({ id, city: null });
 
-        setupPlacesAC(`stop-input-${id}`, c => {
-            const s = midStops.find(x => x.id === id);
-            if (s) s.city = c;
-            updatePreview();
-        });
+    const destRow  = document.getElementById('stop-row-dest');
+    const container = destRow.parentNode;
 
-        refreshReturnToggleVisibility();
-        updateDotLabels();
+    // Stop input row
+    const stopDiv = document.createElement('div');
+    stopDiv.className = 'route-stop';
+    stopDiv.id = `stop-row-${id}`;
+    stopDiv.innerHTML =
+        `<div class="stop-dot stop-dot-via">●</div>
+         <input type="text" id="stop-input-${id}" placeholder="Stopover city" autocomplete="off" />
+         <button type="button" class="remove-stop-btn" onclick="removeStopover(${id})" title="Remove stop">×</button>`;
+    container.insertBefore(stopDiv, destRow);
+
+    // Leg mode connector (for the leg starting FROM this stop)
+    const connDiv = document.createElement('div');
+    connDiv.className = 'leg-connector';
+    connDiv.id = `leg-mode-${id}`;
+    connDiv.innerHTML = `<span class="connector-via">via</span>`;
+    const sel = document.createElement('select');
+    sel.className = 'leg-mode-select';
+    sel.id = `leg-mode-select-${id}`;
+    sel.innerHTML = MODE_OPTIONS_HTML;
+    sel.value = prevMode;
+    sel.addEventListener('change', updatePreview);
+    connDiv.appendChild(sel);
+    container.insertBefore(connDiv, destRow);
+
+    setupPlacesAC(`stop-input-${id}`, c => {
+        const s = midStops.find(x => x.id === id);
+        if (s) s.city = c;
         updatePreview();
-    }
+    });
 
-    function removeStopover(id) {
-        midStops = midStops.filter(s => s.id !== id);
-        const row = document.getElementById(`stop-row-${id}`);
-        if (row) row.remove();
-        refreshReturnToggleVisibility();
-        updateDotLabels();
-        updatePreview();
-    }
+    refreshReturnToggle();
+    updateDotLabels();
+    updatePreview();
+}
 
-    function updateDotLabels() {
-        // Re-letter the intermediate stop dots
-        const dots = document.querySelectorAll('.stop-dot-via');
-        const labels = 'CDEFGHIJKLMNOP';
-        dots.forEach((d, i) => { d.textContent = midStops.length > 1 ? labels[i] || '●' : '●'; });
-    }
+function removeStopover(id) {
+    midStops = midStops.filter(s => s.id !== id);
+    document.getElementById(`stop-row-${id}`)?.remove();
+    document.getElementById(`leg-mode-${id}`)?.remove();
+    refreshReturnToggle();
+    updateDotLabels();
+    updatePreview();
+}
 
-    function refreshReturnToggleVisibility() {
-        // Hide return toggle when there are stopovers — doesn't make sense to double a complex route
-        document.getElementById('return-toggle-wrap').style.display = midStops.length > 0 ? 'none' : '';
-        if (midStops.length > 0) state.isReturn = false;
-    }
+function getLastModeSelectValue() {
+    // Find the mode select of the last leg connector before destination
+    if (midStops.length === 0) return document.getElementById('leg-mode-select-0')?.value || 'Flight-LongHaul-Economy';
+    const lastId = midStops[midStops.length - 1].id;
+    return document.getElementById(`leg-mode-select-${lastId}`)?.value || 'Flight-LongHaul-Economy';
+}
 
-    // ── Map drawing ──────────────────────────────────────────────────────────
+function getAllModeSelects() {
+    // Returns leg mode selects in order: [leg-mode-select-0, leg-mode-select-{id1}, ...]
+    const sels = [document.getElementById('leg-mode-select-0')];
+    midStops.forEach(s => sels.push(document.getElementById(`leg-mode-select-${s.id}`)));
+    return sels;
+}
 
-    function clearMapOverlays() {
-        routeLines.forEach(l => l.setMap(null));
-        routeLines = [];
-        markers.forEach(m => m.setMap(null));
-        markers = [];
-    }
+function updateDotLabels() {
+    const LABELS = 'CDEFGHIJKLMNOPQ';
+    document.querySelectorAll('.stop-dot-via').forEach((dot, i) => {
+        dot.textContent = midStops.length > 1 ? (LABELS[i] || '●') : '●';
+    });
+}
 
-    function addMarker(latLng, color) {
-        markers.push(new google.maps.Marker({
-            position: latLng, map: gmap,
-            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color, fillOpacity: 1, strokeColor: '#0f1a2a', strokeWeight: 2 }
-        }));
-    }
+function refreshReturnToggle() {
+    // Return toggle doesn't apply to multi-leg journeys
+    document.getElementById('return-toggle-wrap').style.display = midStops.length > 0 ? 'none' : '';
+    if (midStops.length > 0) state.isReturn = false;
+}
 
-    function drawMap(cities) {
-        if (!gmap || cities.length < 2) return;
-        clearMapOverlays();
-        const path = cities.map(c => ({ lat: c.lat, lng: c.lng }));
+// ── Map drawing ───────────────────────────────────────────────────────────────
+
+function clearMapOverlays() {
+    routeLines.forEach(l => l.setMap(null));
+    routeLines = [];
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+}
+
+function addMarker(latLng, color) {
+    markers.push(new google.maps.Marker({
+        position:latLng, map:gmap,
+        icon:{ path:google.maps.SymbolPath.CIRCLE, scale:7, fillColor:color, fillOpacity:1, strokeColor:'#0f1a2a', strokeWeight:2 }
+    }));
+}
+
+function drawMap(cities) {
+    if (!gmap || cities.length < 2) return;
+    clearMapOverlays();
+    const path = cities.filter(Boolean).map(c => ({lat:c.lat,lng:c.lng}));
+    if (path.length < 2) return;
+
+    routeLines.push(new google.maps.Polyline({
+        path, geodesic:true, map:gmap,
+        strokeColor:'#1D9E75', strokeOpacity:0.9, strokeWeight:2.5,
+        icons:[{icon:{path:google.maps.SymbolPath.FORWARD_OPEN_ARROW,scale:3,strokeColor:'#1D9E75'},offset:'52%'}]
+    }));
+
+    if (state.isReturn && path.length === 2) {
         routeLines.push(new google.maps.Polyline({
-            path, geodesic: true, map: gmap,
-            strokeColor: '#1D9E75', strokeOpacity: 0.9, strokeWeight: 2.5,
-            icons: [{ icon: { path: google.maps.SymbolPath.FORWARD_OPEN_ARROW, scale: 3, strokeColor: '#1D9E75' }, offset: '52%' }]
+            path:[...path].reverse(), geodesic:true, map:gmap, strokeOpacity:0, strokeWeight:0,
+            icons:[{icon:{path:'M 0,-1 0,1',strokeOpacity:.75,strokeColor:'#C5B4E3',scale:3},offset:'0',repeat:'12px'}]
         }));
-        // Return leg (dashed)
-        if (state.isReturn && cities.length === 2) {
-            const retPath = [...path].reverse();
-            routeLines.push(new google.maps.Polyline({
-                path: retPath, geodesic: true, map: gmap,
-                strokeOpacity: 0, strokeWeight: 0,
-                icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.75, strokeColor: '#C5B4E3', scale: 3 }, offset: '0', repeat: '12px' }]
-            }));
-        }
-        cities.forEach((c, i) => {
-            const color = i === 0 || i === cities.length - 1 ? '#1D9E75' : '#C5B4E3';
-            addMarker({ lat: c.lat, lng: c.lng }, color);
-        });
-        const bounds = new google.maps.LatLngBounds();
-        cities.forEach(c => bounds.extend({ lat: c.lat, lng: c.lng }));
-        gmap.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
     }
 
-    // ── Haversine estimate ───────────────────────────────────────────────────
+    cities.filter(Boolean).forEach((c, i) => {
+        const color = i === 0 || i === cities.length - 1 ? '#1D9E75' : '#C5B4E3';
+        addMarker({lat:c.lat,lng:c.lng}, color);
+    });
 
-    function haversine(c1, c2) {
-        if (!c1 || !c2) return 0;
-        const R = 6371, toRad = d => d * Math.PI / 180;
-        const dLat = toRad(c2.lat - c1.lat), dLon = toRad(c2.lng - c1.lng);
-        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(c1.lat)) * Math.cos(toRad(c2.lat)) * Math.sin(dLon / 2) ** 2;
-        return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-    }
+    const bounds = new google.maps.LatLngBounds();
+    path.forEach(p => bounds.extend(p));
+    gmap.fitBounds(bounds, {top:50,right:50,bottom:50,left:50});
+}
 
-    // ── Preview update ───────────────────────────────────────────────────────
+// ── Haversine estimate ────────────────────────────────────────────────────────
 
-    function updatePreview() {
-        if (!state.origin || !state.dest) return;
+function haversine(c1, c2) {
+    if (!c1 || !c2) return 0;
+    const R = 6371, toRad = d => d * Math.PI / 180;
+    const dLat = toRad(c2.lat - c1.lat), dLon = toRad(c2.lng - c1.lng);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(c1.lat)) * Math.cos(toRad(c2.lat)) * Math.sin(dLon/2)**2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
 
-        const allCities = [state.origin];
-        midStops.forEach(s => { if (s.city) allCities.push(s.city); });
-        allCities.push(state.dest);
+// ── Preview update ────────────────────────────────────────────────────────────
 
-        const mode = document.getElementById('mode').value;
+function updatePreview() {
+    if (!state.origin || !state.dest) return;
+
+    // All cities in order (null for unresolved intermediate stops)
+    const allCities = [state.origin];
+    midStops.forEach(s => allCities.push(s.city)); // may be null
+    allCities.push(state.dest);
+
+    const modeSelects = getAllModeSelects();
+    const pax = Math.max(1, parseInt(document.getElementById('passengers').value) || 1);
+
+    let totalDist = 0, totalKg = 0;
+    const legData = [];
+
+    for (let i = 0; i < modeSelects.length; i++) {
+        const c1   = allCities[i];
+        const c2   = allCities[i + 1];
+        const mode = modeSelects[i]?.value || '';
         const ef   = EF[mode] || 0;
-        const pax  = Math.max(1, parseInt(document.getElementById('passengers').value) || 1);
+        const from = c1?.name || (i === 0 ? document.getElementById('origin-input').value : `Stop ${i}`);
+        const to   = c2?.name || (i + 1 === allCities.length - 1 ? document.getElementById('dest-input').value : `Stop ${i+1}`);
 
-        let totalDist = 0, totalKg = 0;
-        const legData = [];
-
-        for (let i = 0; i < allCities.length - 1; i++) {
-            const legDist = haversine(allCities[i], allCities[i + 1]);
+        if (c1 && c2 && ef > 0) {
+            const legDist = haversine(c1, c2);
             const legKg   = VEHICLE_KM.has(mode) ? Math.round(legDist * ef) : Math.round(legDist * ef * pax);
-            legData.push({ from: allCities[i].name, to: allCities[i + 1].name, dist: legDist, kg: legKg });
+            legData.push({ from, to, dist: legDist, kg: legKg, ok: true });
             totalDist += legDist;
             totalKg   += legKg;
-        }
-
-        // Include return in totals if toggled (simple case — no stopovers)
-        if (state.isReturn && allCities.length === 2) {
-            totalDist *= 2;
-            totalKg   *= 2;
-        }
-
-        document.getElementById('em-legs').textContent  = legData.length + (state.isReturn ? '+ret' : '');
-        document.getElementById('em-dist').textContent  = totalDist.toLocaleString();
-        document.getElementById('em-total').textContent = totalKg.toLocaleString();
-        document.getElementById('em-preview').style.display = 'flex';
-
-        // Leg breakdown
-        const bd = document.getElementById('leg-breakdown');
-        if (legData.length > 1) {
-            bd.style.display = 'block';
-            bd.innerHTML = legData.map((l, i) =>
-                `<div class="leg-row"><span class="leg-route">Leg ${i+1}: ${l.from} → ${l.to} (${l.dist.toLocaleString()} km)</span><span class="leg-kg">${l.kg.toLocaleString()} kg</span></div>`
-            ).join('');
         } else {
-            bd.style.display = 'none';
+            legData.push({ from, to, dist: 0, kg: 0, ok: false });
         }
-
-        const routeLabel = allCities.map(c => c.name).join(' → ');
-        document.getElementById('map-title').textContent = routeLabel;
-        document.getElementById('map-meta').textContent  =
-            totalDist.toLocaleString() + ' km · ' + (totalKg / 1000).toFixed(2) + ' tCO₂e (estimate)';
-
-        drawMap(allCities);
     }
 
-    // ── Return toggle ────────────────────────────────────────────────────────
-
-    function toggleReturn() {
-        if (midStops.length > 0) return;
-        state.isReturn = !state.isReturn;
-        document.getElementById('ret-track').className = 'toggle-track' + (state.isReturn ? ' on' : '');
-        updatePreview();
+    // Return trip (single-leg only)
+    if (state.isReturn && legData.length === 1 && legData[0].ok) {
+        totalDist *= 2;
+        totalKg   *= 2;
     }
 
-    // ── Form submit ──────────────────────────────────────────────────────────
+    document.getElementById('em-legs').textContent  = legData.length + (state.isReturn ? '+ret' : '');
+    document.getElementById('em-dist').textContent  = totalDist.toLocaleString();
+    document.getElementById('em-total').textContent = totalKg.toLocaleString();
+    document.getElementById('em-preview').style.display = 'flex';
 
-    function onFormSubmit() {
-        // Collect non-empty stop names into waypoints JSON
-        const waypoints = midStops
-            .filter(s => s.city)
-            .map(s => s.city.name)
-            .filter(Boolean);
-
-        // Also collect any typed-but-not-autocompleted values
-        const filledByTyping = midStops
-            .filter(s => !s.city)
-            .map(s => {
-                const inp = document.getElementById(`stop-input-${s.id}`);
-                return inp ? inp.value.trim() : '';
-            })
-            .filter(Boolean);
-
-        const all = [...waypoints, ...filledByTyping];
-        document.getElementById('waypoints-json').value = all.length > 0 ? JSON.stringify(all) : '';
-        document.getElementById('loading').style.display = 'block';
-        return true;
+    const bd = document.getElementById('leg-breakdown');
+    if (legData.length > 1) {
+        bd.style.display = 'block';
+        bd.innerHTML = legData.map((l, i) =>
+            l.ok
+            ? `<div class="leg-row">
+                 <span class="leg-route">Leg ${i+1}: ${l.from} → ${l.to} (${l.dist.toLocaleString()} km)</span>
+                 <span class="leg-kg">${l.kg.toLocaleString()} kg</span>
+               </div>`
+            : `<div class="leg-row">
+                 <span class="leg-route" style="color:var(--lv)">Leg ${i+1}: ${l.from} → ${l.to}</span>
+                 <span class="leg-kg" style="color:var(--lv)">–</span>
+               </div>`
+        ).join('');
+    } else {
+        bd.style.display = 'none';
     }
+
+    const resolved = allCities.filter(Boolean).length;
+    const routeLabel = allCities.filter(Boolean).map(c => c.name).join(' → ');
+    document.getElementById('map-title').textContent = routeLabel || 'Route map';
+    document.getElementById('map-meta').textContent  = resolved >= 2
+        ? `${totalDist.toLocaleString()} km · ${(totalKg/1000).toFixed(2)} tCO₂e (estimate)`
+        : 'Select cities to see estimate';
+
+    drawMap(allCities);
+}
+
+// ── Return toggle ─────────────────────────────────────────────────────────────
+
+function toggleReturn() {
+    if (midStops.length > 0) return;
+    state.isReturn = !state.isReturn;
+    document.getElementById('ret-track').className = 'toggle-track' + (state.isReturn ? ' on' : '');
+    updatePreview();
+}
+
+// ── Client-side error helper ──────────────────────────────────────────────────
+
+function showClientError(msg) {
+    const el = document.getElementById('client-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function hideClientError() {
+    document.getElementById('client-error').style.display = 'none';
+}
+
+// ── Form submission ───────────────────────────────────────────────────────────
+
+function onFormSubmit() {
+    hideClientError();
+
+    const originVal = document.getElementById('origin-input').value.trim();
+    const destVal   = document.getElementById('dest-input').value.trim();
+
+    if (!originVal) { showClientError('Please enter an origin.'); return false; }
+    if (!destVal)   { showClientError('Please enter a destination.'); return false; }
+
+    // Validate all stopover fields are filled
+    for (const s of midStops) {
+        const inp = document.getElementById(`stop-input-${s.id}`);
+        if (!inp || !inp.value.trim()) {
+            showClientError('All stopover fields must be filled. Remove unused stopover rows or enter a city name.');
+            inp?.focus();
+            return false;
+        }
+    }
+
+    // Collect city values in order
+    const cityValues = [originVal];
+    midStops.forEach(s => {
+        const inp = document.getElementById(`stop-input-${s.id}`);
+        cityValues.push(inp ? inp.value.trim() : '');
+    });
+    cityValues.push(destVal);
+
+    // Collect mode selects in order: [leg-mode-select-0, leg-mode-select-{id1}, ...]
+    const modeSelects = getAllModeSelects();
+
+    // Build legs array: one leg per consecutive pair
+    const legs = modeSelects.map((sel, i) => ({
+        from: cityValues[i]     || '',
+        to:   cityValues[i + 1] || '',
+        mode: sel ? sel.value   : '',
+    }));
+
+    document.getElementById('waypoints-json').value = JSON.stringify(legs);
+    document.getElementById('loading').style.display = 'block';
+    return true;
+}
 </script>
 
 <script async defer
