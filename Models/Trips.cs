@@ -13,6 +13,24 @@ namespace CarbonTrack.Models
         [Required]
         public string Destination { get; set; } = "";
 
+        // JSON array of intermediate stop names, e.g. ["Frankfurt","Dubai"]
+        public string? Waypoints { get; set; }
+
+        [NotMapped]
+        public string RouteDescription
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(Waypoints)) return $"{Origin} → {Destination}";
+                try
+                {
+                    var mid = System.Text.Json.JsonSerializer.Deserialize<string[]>(Waypoints) ?? [];
+                    return string.Join(" → ", new[] { Origin }.Concat(mid).Append(Destination));
+                }
+                catch { return $"{Origin} → {Destination}"; }
+            }
+        }
+
         [Required]
         public DateTime TripDate { get; set; }
 

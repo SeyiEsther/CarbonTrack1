@@ -16,6 +16,57 @@
     .log-layout { display: flex; gap: 24px; align-items: flex-start; }
     .log-form-col { flex: 0 0 480px; }
     .log-map-col { flex: 1; position: sticky; top: 24px; }
+
+    /* Route builder */
+    .route-builder { display: flex; flex-direction: column; gap: 0; margin-bottom: 4px; }
+    .route-stop { display: flex; align-items: center; gap: 10px; position: relative; }
+    .route-stop + .route-stop::before {
+        content: '';
+        position: absolute;
+        left: 14px; top: -12px;
+        width: 2px; height: 12px;
+        background: var(--bda);
+    }
+    .stop-dot {
+        width: 28px; height: 28px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; flex-shrink: 0;
+        border: 2px solid;
+    }
+    .stop-dot-origin { background: rgba(29,158,117,0.15); border-color: #1D9E75; color: #1D9E75; }
+    .stop-dot-via    { background: rgba(197,180,227,0.12); border-color: #C5B4E3; color: #C5B4E3; }
+    .stop-dot-dest   { background: rgba(239,68,68,0.1);   border-color: rgba(239,68,68,0.5); color: rgba(239,68,68,0.8); }
+    .route-stop input[type=text] {
+        flex: 1;
+        background: var(--bg3);
+        border: 1px solid var(--bda);
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: var(--tx);
+        outline: none;
+        transition: border-color 0.15s;
+    }
+    .route-stop input[type=text]:focus { border-color: #1D9E75; }
+    .remove-stop-btn {
+        background: none; border: none;
+        color: rgba(239,68,68,0.5); cursor: pointer;
+        font-size: 16px; line-height: 1;
+        padding: 4px 6px; border-radius: 4px;
+        transition: color 0.15s;
+    }
+    .remove-stop-btn:hover { color: rgba(239,68,68,1); }
+    .add-stop-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: none; border: 1px dashed var(--bda);
+        border-radius: 8px; padding: 8px 14px;
+        font-size: 12px; color: #C5B4E3; cursor: pointer;
+        width: 100%; margin-top: 10px;
+        transition: border-color 0.15s, color 0.15s;
+    }
+    .add-stop-btn:hover { border-color: #C5B4E3; color: #fff; }
+
+    /* Return toggle */
     .return-toggle { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--lvl); border: 1px solid var(--bda); border-radius: 8px; margin-bottom: 14px; cursor: pointer; user-select: none; }
     .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: var(--bda); position: relative; transition: background 0.2s; flex-shrink: 0; }
     .toggle-track.on { background: #1D9E75; }
@@ -23,10 +74,8 @@
     .toggle-track.on .toggle-thumb { left: 18px; }
     .toggle-label { font-size: 13px; font-weight: 600; }
     .toggle-sub { font-size: 11px; color: var(--lv); margin-top: 1px; }
-    .return-section { border-top: 1px solid var(--bda); margin-top: 14px; padding-top: 14px; }
-    .return-leg-label { font-size: 11px; color: var(--lv); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .return-leg-label::before { content: '↩'; font-size: 13px; }
-    .diff-route-btn { font-size: 12px; color: #1D9E75; cursor: pointer; text-decoration: underline; background: none; border: none; padding: 0; margin-bottom: 12px; }
+
+    /* Map */
     .map-card { background: var(--bg2); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden; }
     .map-header { padding: 12px 16px; border-bottom: 1px solid var(--bd); display: flex; justify-content: space-between; align-items: center; }
     .map-title { font-size: 13px; font-weight: 600; }
@@ -39,23 +88,24 @@
     .em-value { font-size: 20px; font-weight: 600; margin-top: 3px; }
     .em-unit { font-size: 10px; color: var(--lv); }
 
-    /* Style Google Places Autocomplete dropdown to match app theme */
+    /* Leg breakdown */
+    .leg-breakdown { font-size: 11px; color: var(--lv); padding: 10px 16px; border-top: 1px solid var(--bd); display: none; }
+    .leg-row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .leg-route { color: var(--txm); }
+    .leg-kg { color: #1D9E75; font-weight: 600; }
+
+    /* Google Places dropdown */
     .pac-container {
-        background: #1a2a1a;
-        border: 1px solid rgba(197,180,227,0.25);
-        border-radius: 8px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        font-family: 'DM Sans', sans-serif;
-        margin-top: 3px;
+        background: #1a2a1a; border: 1px solid rgba(197,180,227,0.25);
+        border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        font-family: 'DM Sans', sans-serif; margin-top: 3px;
     }
     .pac-container::after { display: none; }
     .pac-item {
-        padding: 9px 14px;
-        font-size: 13px;
+        padding: 9px 14px; font-size: 13px;
         color: rgba(255,255,255,0.8);
         border-top: 1px solid rgba(255,255,255,0.05);
-        cursor: pointer;
-        line-height: 1.4;
+        cursor: pointer; line-height: 1.4;
     }
     .pac-item:first-child { border-top: none; }
     .pac-item:hover, .pac-item-selected { background: rgba(197,180,227,0.12); }
@@ -66,7 +116,7 @@
 
 <div class="mb-6">
     <h1 class="page-title">Log a trip</h1>
-    <p class="page-sub">DEFRA 2025 factors and distances calculated automatically.</p>
+    <p class="page-sub">DEFRA 2025 factors · distances calculated automatically · supports multi-leg routes with layovers</p>
 </div>
 
 <div class="log-layout">
@@ -76,11 +126,13 @@
             <strong>How distances are calculated:</strong><br>
             Flights use the <strong>Haversine Great Circle formula</strong> — the only DEFRA-compliant method for air travel.
             Road and rail use the <strong>Google Maps Distance Matrix API</strong> for actual route distances.
+            Each leg of a multi-stop journey is calculated separately and summed.
         </div>
 
         <div class="form-card">
             <form method="post" asp-action="LogTrip" onsubmit="return onFormSubmit()">
                 @Html.AntiForgeryToken()
+                <input type="hidden" id="waypoints-json" name="Waypoints" value="" />
 
                 <div class="grid-2">
                     <div class="fg">
@@ -91,14 +143,28 @@
                         <label>Number of passengers</label>
                         <input type="number" asp-for="Passengers" id="passengers" min="1" max="500" value="1" required onchange="updatePreview()" />
                     </div>
-                    <div class="fg">
-                        <label>Origin</label>
-                        <input type="text" asp-for="Origin" id="origin-input" placeholder="e.g. London, New York, Tokyo" required autocomplete="off" />
+                </div>
+
+                <!-- Route builder -->
+                <div class="fg" style="margin-bottom:14px">
+                    <label style="margin-bottom:10px;display:block">Route</label>
+                    <div class="route-builder" id="route-builder">
+                        <div class="route-stop" id="stop-row-origin">
+                            <div class="stop-dot stop-dot-origin">A</div>
+                            <input type="text" asp-for="Origin" id="origin-input" placeholder="Origin — e.g. London, New York" required autocomplete="off" />
+                        </div>
+                        <div id="stopovers-container"></div>
+                        <div class="route-stop" id="stop-row-dest">
+                            <div class="stop-dot stop-dot-dest">B</div>
+                            <input type="text" asp-for="Destination" id="dest-input" placeholder="Destination — e.g. Singapore, Dubai" required autocomplete="off" />
+                        </div>
                     </div>
-                    <div class="fg">
-                        <label>Destination</label>
-                        <input type="text" asp-for="Destination" id="dest-input" placeholder="e.g. Edinburgh, Dubai, Singapore" required autocomplete="off" />
-                    </div>
+                    <button type="button" class="add-stop-btn" onclick="addStopover()">
+                        + Add stopover / layover
+                    </button>
+                </div>
+
+                <div class="grid-2">
                     <div class="fg">
                         <label>Transport mode</label>
                         <select asp-for="TransportMode" id="mode" required onchange="updatePreview()">
@@ -133,69 +199,19 @@
                     </div>
                 </div>
 
-                <!-- Return trip toggle -->
-                <div class="return-toggle" onclick="toggleReturn()">
-                    <div id="ret-track" class="toggle-track"><div class="toggle-thumb"></div></div>
-                    <div>
-                        <div class="toggle-label">Return trip</div>
-                        <div class="toggle-sub">Include the journey back</div>
-                    </div>
-                </div>
-
-                <div id="return-section" style="display:none">
-                    <div class="return-section">
-                        <div class="return-leg-label">Return leg</div>
-                        <button type="button" class="diff-route-btn" id="diff-btn" onclick="toggleDiffRoute()">Use a different route back</button>
-
-                        <div id="diff-route" style="display:none">
-                            <div class="grid-2">
-                                <div class="fg">
-                                    <label>Return origin</label>
-                                    <input type="text" id="ret-origin-input" placeholder="e.g. Edinburgh" autocomplete="off" />
-                                </div>
-                                <div class="fg">
-                                    <label>Return destination</label>
-                                    <input type="text" id="ret-dest-input" placeholder="e.g. London" autocomplete="off" />
-                                </div>
-                            </div>
-                            <div class="fg">
-                                <label>Return transport mode</label>
-                                <select id="ret-mode" onchange="updatePreview()">
-                                    <optgroup label="Flights">
-                                        <option value="Flight-Domestic">Flight — Domestic</option>
-                                        <option value="Flight-ShortHaul-Economy">Flight — Short Haul Economy</option>
-                                        <option value="Flight-ShortHaul-Business">Flight — Short Haul Business</option>
-                                        <option value="Flight-LongHaul-Economy">Flight — Long Haul Economy</option>
-                                        <option value="Flight-LongHaul-Business">Flight — Long Haul Business</option>
-                                        <option value="Flight-LongHaul-First">Flight — Long Haul First</option>
-                                    </optgroup>
-                                    <optgroup label="Rail">
-                                        <option value="Train-National">Train — National Rail</option>
-                                        <option value="Train-International">Train — International</option>
-                                    </optgroup>
-                                    <optgroup label="Road">
-                                        <option value="Car-Petrol">Car — Average Petrol</option>
-                                        <option value="Car-Diesel">Car — Average Diesel</option>
-                                        <option value="Car-Hybrid">Car — Average Hybrid</option>
-                                        <option value="Car-Electric">Car — Average Electric</option>
-                                        <option value="Taxi">Taxi</option>
-                                    </optgroup>
-                                    <optgroup label="Ferry">
-                                        <option value="Ferry-Foot">Ferry — Foot Passenger</option>
-                                        <option value="Ferry-Car">Ferry — Car Passenger</option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div id="same-route-note" style="font-size:12px;color:var(--lv);padding:4px 0">
-                            Same route reversed — <span id="ret-route-label">–</span>
+                <!-- Return trip toggle (hidden when stopovers are present) -->
+                <div id="return-toggle-wrap">
+                    <div class="return-toggle" onclick="toggleReturn()">
+                        <div id="ret-track" class="toggle-track"><div class="toggle-thumb"></div></div>
+                        <div>
+                            <div class="toggle-label">Return trip</div>
+                            <div class="toggle-sub" id="ret-sub">Include the journey back (same route reversed)</div>
                         </div>
                     </div>
                 </div>
 
                 <div id="loading" style="display:none;background:var(--lvl);border:1px solid var(--bda);border-radius:8px;padding:14px;text-align:center;font-size:13px;color:var(--lv);margin-bottom:12px">
-                    Calculating distance and DEFRA 2025 emissions...
+                    Calculating distances and DEFRA 2025 emissions for all legs…
                 </div>
 
                 <button type="submit" class="btn-submit">Calculate & save trip →</button>
@@ -214,36 +230,32 @@
             <div id="gmap"></div>
             <div class="em-preview" id="em-preview" style="display:none">
                 <div class="em-stat">
-                    <div class="em-label">Outbound</div>
-                    <div class="em-value" id="em-out">–</div>
-                    <div class="em-unit">kgCO₂e</div>
-                </div>
-                <div class="em-stat" id="em-ret-col" style="display:none">
-                    <div class="em-label">Return</div>
-                    <div class="em-value" id="em-ret">–</div>
-                    <div class="em-unit">kgCO₂e</div>
-                </div>
-                <div class="em-stat">
-                    <div class="em-label">Total</div>
-                    <div class="em-value" id="em-total" style="color:#1D9E75">–</div>
-                    <div class="em-unit">kgCO₂e</div>
+                    <div class="em-label">Legs</div>
+                    <div class="em-value" id="em-legs">1</div>
+                    <div class="em-unit">segments</div>
                 </div>
                 <div class="em-stat">
                     <div class="em-label">Distance</div>
                     <div class="em-value" id="em-dist">–</div>
                     <div class="em-unit">km (est.)</div>
                 </div>
+                <div class="em-stat">
+                    <div class="em-label">Total</div>
+                    <div class="em-value" id="em-total" style="color:#1D9E75">–</div>
+                    <div class="em-unit">kgCO₂e</div>
+                </div>
             </div>
+            <div class="leg-breakdown" id="leg-breakdown"></div>
         </div>
         <p style="font-size:11px;color:var(--lv);margin-top:8px;padding:0 4px">
-            * Preview uses Haversine estimate. Final figures are calculated server-side with DEFRA 2025 factors and precise distances.
+            * Preview uses Haversine estimates. Final figures calculated server-side with DEFRA 2025 factors and precise distances.
         </p>
     </div>
 
 </div>
 
 <script>
-    // DEFRA 2025 emission factors — mirror of server-side values
+    // DEFRA 2025 emission factors
     const EF = {
         'Flight-Domestic': 0.255133, 'Flight-ShortHaul-Economy': 0.153180, 'Flight-ShortHaul-Business': 0.229770,
         'Flight-LongHaul-Economy': 0.147613, 'Flight-LongHaul-Business': 0.429234, 'Flight-LongHaul-First': 0.590454,
@@ -251,74 +263,105 @@
         'Car-Petrol': 0.168330, 'Car-Diesel': 0.163050, 'Car-Hybrid': 0.106850, 'Car-Electric': 0.052690,
         'Taxi': 0.149780, 'Ferry-Foot': 0.018820, 'Ferry-Car': 0.128860
     };
-    // Vehicle-km modes: DEFRA factors are per vehicle-km so no passenger multiplier
     const VEHICLE_KM = new Set(['Car-Petrol','Car-Diesel','Car-Hybrid','Car-Electric','Taxi','Ferry-Car']);
 
-    // State: each city is { name, lat, lng } once selected via Places
-    let state = { origin: null, dest: null, retOrigin: null, retDest: null, isReturn: false, diffRoute: false };
-    let gmap = null, outLine = null, retLine = null, markers = [];
-
-    // ── Google Maps + Places init ────────────────────────────────────────────
+    // Stop state: origin and dest are in state; midStops is the array of intermediate stops
+    let state = { origin: null, dest: null, isReturn: false };
+    let midStops = []; // { id, city: {name, lat, lng} | null }
+    let stopCounter = 0;
+    let gmap = null, routeLines = [], markers = [];
 
     const MAP_STYLES = [
-        { elementType: 'geometry',               stylers: [{ color: '#1e2d3d' }] },
-        { elementType: 'labels.text.stroke',     stylers: [{ color: '#1a2535' }] },
-        { elementType: 'labels.text.fill',       stylers: [{ color: '#6a8fa8' }] },
-        { featureType: 'water',  elementType: 'geometry', stylers: [{ color: '#12202e' }] },
-        { featureType: 'water',  elementType: 'labels.text.fill', stylers: [{ color: '#2a4a60' }] },
+        { elementType: 'geometry', stylers: [{ color: '#1e2d3d' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#1a2535' }] },
+        { elementType: 'labels.text.fill', stylers: [{ color: '#6a8fa8' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#12202e' }] },
         { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#1e2d3d' }] },
         { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#2e4f6a' }, { weight: 0.8 }] },
-        { featureType: 'administrative', elementType: 'labels.text.fill', stylers: [{ color: '#5a7a94', visibility: 'simplified' }] },
         { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#6a8fa8' }] },
-        { featureType: 'road',   stylers: [{ visibility: 'off' }] },
-        { featureType: 'poi',    stylers: [{ visibility: 'off' }] },
-        { featureType: 'transit',stylers: [{ visibility: 'off' }] },
+        { featureType: 'road', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit', stylers: [{ visibility: 'off' }] },
     ];
 
     function initGoogleMap() {
         gmap = new google.maps.Map(document.getElementById('gmap'), {
-            center: { lat: 30, lng: 10 },
-            zoom: 2,
-            styles: MAP_STYLES,
-            disableDefaultUI: true,
-            zoomControl: true,
+            center: { lat: 30, lng: 10 }, zoom: 2,
+            styles: MAP_STYLES, disableDefaultUI: true, zoomControl: true,
             zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP },
         });
-
-        setupPlacesAC('origin-input',     c => { state.origin    = c; updateReturnLabel(); updatePreview(); });
-        setupPlacesAC('dest-input',       c => { state.dest      = c; updateReturnLabel(); updatePreview(); });
-        setupPlacesAC('ret-origin-input', c => { state.retOrigin = c; updatePreview(); });
-        setupPlacesAC('ret-dest-input',   c => { state.retDest   = c; updatePreview(); });
+        setupPlacesAC('origin-input', c => { state.origin = c; updatePreview(); });
+        setupPlacesAC('dest-input',   c => { state.dest   = c; updatePreview(); });
     }
 
     function setupPlacesAC(inputId, onSelect) {
         const input = document.getElementById(inputId);
         if (!input) return;
-
-        const ac = new google.maps.places.Autocomplete(input, {
-            types: ['(cities)'],
-            fields: ['name', 'geometry']
-        });
-
-        // Prevent Enter from submitting the form while autocomplete is open
+        const ac = new google.maps.places.Autocomplete(input, { types: ['(cities)'], fields: ['name', 'geometry'] });
         input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
-
         ac.addListener('place_changed', () => {
             const place = ac.getPlace();
             if (!place.geometry?.location) return;
-            onSelect({
-                name: place.name,
-                lat:  place.geometry.location.lat(),
-                lng:  place.geometry.location.lng()
-            });
+            onSelect({ name: place.name, lat: place.geometry.location.lat(), lng: place.geometry.location.lng() });
         });
+    }
+
+    // ── Stopover management ──────────────────────────────────────────────────
+
+    function addStopover() {
+        const id = ++stopCounter;
+        const stop = { id, city: null };
+        midStops.push(stop);
+
+        // Insert new stop row before the destination row
+        const destRow = document.getElementById('stop-row-dest');
+        const div = document.createElement('div');
+        div.className = 'route-stop';
+        div.id = `stop-row-${id}`;
+        div.innerHTML = `
+            <div class="stop-dot stop-dot-via">●</div>
+            <input type="text" id="stop-input-${id}" placeholder="Stopover city — e.g. Frankfurt" autocomplete="off" />
+            <button type="button" class="remove-stop-btn" onclick="removeStopover(${id})" title="Remove stop">×</button>`;
+        destRow.parentNode.insertBefore(div, destRow);
+
+        setupPlacesAC(`stop-input-${id}`, c => {
+            const s = midStops.find(x => x.id === id);
+            if (s) s.city = c;
+            updatePreview();
+        });
+
+        refreshReturnToggleVisibility();
+        updateDotLabels();
+        updatePreview();
+    }
+
+    function removeStopover(id) {
+        midStops = midStops.filter(s => s.id !== id);
+        const row = document.getElementById(`stop-row-${id}`);
+        if (row) row.remove();
+        refreshReturnToggleVisibility();
+        updateDotLabels();
+        updatePreview();
+    }
+
+    function updateDotLabels() {
+        // Re-letter the intermediate stop dots
+        const dots = document.querySelectorAll('.stop-dot-via');
+        const labels = 'CDEFGHIJKLMNOP';
+        dots.forEach((d, i) => { d.textContent = midStops.length > 1 ? labels[i] || '●' : '●'; });
+    }
+
+    function refreshReturnToggleVisibility() {
+        // Hide return toggle when there are stopovers — doesn't make sense to double a complex route
+        document.getElementById('return-toggle-wrap').style.display = midStops.length > 0 ? 'none' : '';
+        if (midStops.length > 0) state.isReturn = false;
     }
 
     // ── Map drawing ──────────────────────────────────────────────────────────
 
     function clearMapOverlays() {
-        if (outLine) { outLine.setMap(null); outLine = null; }
-        if (retLine) { retLine.setMap(null); retLine = null; }
+        routeLines.forEach(l => l.setMap(null));
+        routeLines = [];
         markers.forEach(m => m.setMap(null));
         markers = [];
     }
@@ -326,125 +369,130 @@
     function addMarker(latLng, color) {
         markers.push(new google.maps.Marker({
             position: latLng, map: gmap,
-            icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 7, fillColor: color, fillOpacity: 1,
-                strokeColor: '#0f1a2a', strokeWeight: 2
-            }
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color, fillOpacity: 1, strokeColor: '#0f1a2a', strokeWeight: 2 }
         }));
     }
 
-    function drawMap() {
-        if (!state.origin || !state.dest || !gmap) return;
+    function drawMap(cities) {
+        if (!gmap || cities.length < 2) return;
         clearMapOverlays();
-
-        const o = { lat: state.origin.lat, lng: state.origin.lng };
-        const d = { lat: state.dest.lat,   lng: state.dest.lng   };
-
-        outLine = new google.maps.Polyline({
-            path: [o, d], geodesic: true, map: gmap,
+        const path = cities.map(c => ({ lat: c.lat, lng: c.lng }));
+        routeLines.push(new google.maps.Polyline({
+            path, geodesic: true, map: gmap,
             strokeColor: '#1D9E75', strokeOpacity: 0.9, strokeWeight: 2.5,
             icons: [{ icon: { path: google.maps.SymbolPath.FORWARD_OPEN_ARROW, scale: 3, strokeColor: '#1D9E75' }, offset: '52%' }]
-        });
-
-        addMarker(o, '#1D9E75');
-        addMarker(d, '#1D9E75');
-
-        if (state.isReturn) {
-            const ro = (state.diffRoute && state.retOrigin) ? { lat: state.retOrigin.lat, lng: state.retOrigin.lng } : d;
-            const rd = (state.diffRoute && state.retDest)   ? { lat: state.retDest.lat,   lng: state.retDest.lng   } : o;
-            retLine = new google.maps.Polyline({
-                path: [ro, rd], geodesic: true, map: gmap,
+        }));
+        // Return leg (dashed)
+        if (state.isReturn && cities.length === 2) {
+            const retPath = [...path].reverse();
+            routeLines.push(new google.maps.Polyline({
+                path: retPath, geodesic: true, map: gmap,
                 strokeOpacity: 0, strokeWeight: 0,
                 icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.75, strokeColor: '#C5B4E3', scale: 3 }, offset: '0', repeat: '12px' }]
-            });
-            if (state.diffRoute && state.retOrigin && state.retDest) {
-                addMarker(ro, '#C5B4E3');
-                addMarker(rd, '#C5B4E3');
-            }
+            }));
         }
-
+        cities.forEach((c, i) => {
+            const color = i === 0 || i === cities.length - 1 ? '#1D9E75' : '#C5B4E3';
+            addMarker({ lat: c.lat, lng: c.lng }, color);
+        });
         const bounds = new google.maps.LatLngBounds();
-        bounds.extend(o);
-        bounds.extend(d);
+        cities.forEach(c => bounds.extend({ lat: c.lat, lng: c.lng }));
         gmap.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
     }
 
-    // ── Haversine preview (uses real lat/lng from Places) ────────────────────
+    // ── Haversine estimate ───────────────────────────────────────────────────
 
     function haversine(c1, c2) {
         if (!c1 || !c2) return 0;
         const R = 6371, toRad = d => d * Math.PI / 180;
         const dLat = toRad(c2.lat - c1.lat), dLon = toRad(c2.lng - c1.lng);
-        const a = Math.sin(dLat / 2) ** 2
-                + Math.cos(toRad(c1.lat)) * Math.cos(toRad(c2.lat)) * Math.sin(dLon / 2) ** 2;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(c1.lat)) * Math.cos(toRad(c2.lat)) * Math.sin(dLon / 2) ** 2;
         return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    // ── UI helpers ───────────────────────────────────────────────────────────
-
-    function updateReturnLabel() {
-        if (state.dest && state.origin)
-            document.getElementById('ret-route-label').textContent = state.dest.name + ' → ' + state.origin.name;
-    }
-
-    function toggleReturn() {
-        state.isReturn = !state.isReturn;
-        document.getElementById('ret-track').className = 'toggle-track' + (state.isReturn ? ' on' : '');
-        document.getElementById('return-section').style.display = state.isReturn ? 'block' : 'none';
-        document.getElementById('em-ret-col').style.display     = state.isReturn ? ''      : 'none';
-        updatePreview();
-    }
-
-    function toggleDiffRoute() {
-        state.diffRoute = !state.diffRoute;
-        document.getElementById('diff-route').style.display      = state.diffRoute ? 'block' : 'none';
-        document.getElementById('same-route-note').style.display = state.diffRoute ? 'none'  : 'block';
-        document.getElementById('diff-btn').textContent = state.diffRoute ? 'Use same route back' : 'Use a different route back';
-        updatePreview();
-    }
+    // ── Preview update ───────────────────────────────────────────────────────
 
     function updatePreview() {
         if (!state.origin || !state.dest) return;
 
-        const dist    = haversine(state.origin, state.dest);
-        const mode    = document.getElementById('mode').value;
-        const ef      = EF[mode] || 0;
-        const pax     = Math.max(1, parseInt(document.getElementById('passengers').value) || 1);
-        const outKg   = VEHICLE_KM.has(mode)
-            ? Math.round(dist * ef)
-            : Math.round(dist * ef * pax);
+        const allCities = [state.origin];
+        midStops.forEach(s => { if (s.city) allCities.push(s.city); });
+        allCities.push(state.dest);
 
-        let retKg = 0, retDist = 0;
-        if (state.isReturn) {
-            if (state.diffRoute && state.retOrigin && state.retDest) {
-                retDist = haversine(state.retOrigin, state.retDest);
-                const retMode = document.getElementById('ret-mode').value;
-                retKg   = VEHICLE_KM.has(retMode)
-                    ? Math.round(retDist * (EF[retMode] || 0))
-                    : Math.round(retDist * (EF[retMode] || 0) * pax);
-            } else {
-                retDist = dist;
-                retKg   = outKg;
-            }
+        const mode = document.getElementById('mode').value;
+        const ef   = EF[mode] || 0;
+        const pax  = Math.max(1, parseInt(document.getElementById('passengers').value) || 1);
+
+        let totalDist = 0, totalKg = 0;
+        const legData = [];
+
+        for (let i = 0; i < allCities.length - 1; i++) {
+            const legDist = haversine(allCities[i], allCities[i + 1]);
+            const legKg   = VEHICLE_KM.has(mode) ? Math.round(legDist * ef) : Math.round(legDist * ef * pax);
+            legData.push({ from: allCities[i].name, to: allCities[i + 1].name, dist: legDist, kg: legKg });
+            totalDist += legDist;
+            totalKg   += legKg;
         }
 
-        const totalKg   = outKg + retKg;
-        const totalDist = dist + (state.isReturn ? retDist : 0);
+        // Include return in totals if toggled (simple case — no stopovers)
+        if (state.isReturn && allCities.length === 2) {
+            totalDist *= 2;
+            totalKg   *= 2;
+        }
 
-        document.getElementById('em-out').textContent   = outKg.toLocaleString();
-        document.getElementById('em-ret').textContent   = retKg.toLocaleString();
-        document.getElementById('em-total').textContent = totalKg.toLocaleString();
+        document.getElementById('em-legs').textContent  = legData.length + (state.isReturn ? '+ret' : '');
         document.getElementById('em-dist').textContent  = totalDist.toLocaleString();
+        document.getElementById('em-total').textContent = totalKg.toLocaleString();
         document.getElementById('em-preview').style.display = 'flex';
-        document.getElementById('map-title').textContent = (state.origin.name || '') + ' → ' + (state.dest.name || '');
+
+        // Leg breakdown
+        const bd = document.getElementById('leg-breakdown');
+        if (legData.length > 1) {
+            bd.style.display = 'block';
+            bd.innerHTML = legData.map((l, i) =>
+                `<div class="leg-row"><span class="leg-route">Leg ${i+1}: ${l.from} → ${l.to} (${l.dist.toLocaleString()} km)</span><span class="leg-kg">${l.kg.toLocaleString()} kg</span></div>`
+            ).join('');
+        } else {
+            bd.style.display = 'none';
+        }
+
+        const routeLabel = allCities.map(c => c.name).join(' → ');
+        document.getElementById('map-title').textContent = routeLabel;
         document.getElementById('map-meta').textContent  =
             totalDist.toLocaleString() + ' km · ' + (totalKg / 1000).toFixed(2) + ' tCO₂e (estimate)';
 
-        drawMap();
+        drawMap(allCities);
     }
 
+    // ── Return toggle ────────────────────────────────────────────────────────
+
+    function toggleReturn() {
+        if (midStops.length > 0) return;
+        state.isReturn = !state.isReturn;
+        document.getElementById('ret-track').className = 'toggle-track' + (state.isReturn ? ' on' : '');
+        updatePreview();
+    }
+
+    // ── Form submit ──────────────────────────────────────────────────────────
+
     function onFormSubmit() {
+        // Collect non-empty stop names into waypoints JSON
+        const waypoints = midStops
+            .filter(s => s.city)
+            .map(s => s.city.name)
+            .filter(Boolean);
+
+        // Also collect any typed-but-not-autocompleted values
+        const filledByTyping = midStops
+            .filter(s => !s.city)
+            .map(s => {
+                const inp = document.getElementById(`stop-input-${s.id}`);
+                return inp ? inp.value.trim() : '';
+            })
+            .filter(Boolean);
+
+        const all = [...waypoints, ...filledByTyping];
+        document.getElementById('waypoints-json').value = all.length > 0 ? JSON.stringify(all) : '';
         document.getElementById('loading').style.display = 'block';
         return true;
     }

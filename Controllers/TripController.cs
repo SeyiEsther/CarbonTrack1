@@ -87,30 +87,71 @@ namespace CarbonTrack.Controllers
                     return View(trip);
                 }
 
-                trip.DistanceKm = await _mapsService.GetDistanceKm(trip.Origin, trip.Destination, trip.TransportMode);
-                if (trip.DistanceKm <= 0)
+                // Parse intermediate stops and build ordered list of all stops
+                string[] midStops = [];
+                if (!string.IsNullOrWhiteSpace(trip.Waypoints))
                 {
-                    ViewBag.Error = "Distance returned as zero — check origin and destination names.";
-                    ViewBag.GoogleMapsApiKey = _mapsService.ApiKey;
-                    return View(trip);
+                    try
+                    {
+                        midStops = System.Text.Json.JsonSerializer.Deserialize<string[]>(trip.Waypoints)
+                                   ?? [];
+                    }
+                    catch { midStops = []; }
+                }
+                midStops = midStops.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+
+                // Persist clean JSON (empty array if no stops)
+                trip.Waypoints = midStops.Length > 0
+                    ? System.Text.Json.JsonSerializer.Serialize(midStops)
+                    : null;
+
+                var allStops = new List<string> { trip.Origin };
+                allStops.AddRange(midStops);
+                allStops.Add(trip.Destination);
+
+                // Calculate each leg independently
+                double totalKm   = 0;
+                double totalKgCO2e = 0;
+                var formulaParts = new List<string>();
+
+                for (int i = 0; i < allStops.Count - 1; i++)
+                {
+                    var from  = allStops[i];
+                    var to    = allStops[i + 1];
+                    var legKm = await _mapsService.GetDistanceKm(from, to, trip.TransportMode);
+                    if (legKm <= 0)
+                    {
+                        ViewBag.Error = $"Distance returned as zero for leg {from} → {to}. Check the place names.";
+                        ViewBag.GoogleMapsApiKey = _mapsService.ApiKey;
+                        return View(trip);
+                    }
+                    var legKg = DefraCalculator.CalculateKgCO2e(legKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode);
+                    formulaParts.Add(allStops.Count > 2
+                        ? $"Leg {i + 1} ({from}→{to}): {DefraCalculator.GetFormula(legKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode)}"
+                        : DefraCalculator.GetFormula(legKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode));
+                    totalKm      += legKm;
+                    totalKgCO2e  += legKg;
                 }
 
-                trip.KgCO2e = DefraCalculator.CalculateKgCO2e(trip.DistanceKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode);
-                trip.Formula = DefraCalculator.GetFormula(trip.DistanceKm, trip.EmissionFactor, trip.Passengers, trip.TransportMode);
-                trip.DistanceMethodology = DefraCalculator.GetDistanceMethodology(trip.TransportMode);
+                trip.DistanceKm = Math.Round(totalKm, 2);
+                trip.KgCO2e     = Math.Round(totalKgCO2e, 2);
+                trip.Formula    = string.Join(" | ", formulaParts);
+                trip.DistanceMethodology = DefraCalculator.GetDistanceMethodology(trip.TransportMode)
+                    + (midStops.Length > 0 ? $" ({allStops.Count - 1} legs)" : "");
+
                 var currentUser = await _userManager.GetUserAsync(User);
                 trip.DefraFactorYear = "DEFRA 2025";
-                trip.OrganisationId = currentUser?.OrganisationId ?? 0;
-                trip.UserId = currentUser?.Id;
-                trip.CreatedAt = DateTime.UtcNow;
+                trip.OrganisationId  = currentUser?.OrganisationId ?? 0;
+                trip.UserId          = currentUser?.Id;
+                trip.CreatedAt       = DateTime.UtcNow;
 
                 _context.Trips.Add(trip);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Trip saved: {Origin}→{Destination} | {Mode} | {Km}km | {Kg}kgCO2e",
-                    trip.Origin, trip.Destination, trip.TransportMode, trip.DistanceKm, trip.KgCO2e);
+                _logger.LogInformation("Trip saved: {Route} | {Mode} | {Km}km | {Kg}kgCO2e",
+                    trip.RouteDescription, trip.TransportMode, trip.DistanceKm, trip.KgCO2e);
 
-                TempData["Success"] = $"Trip logged: {trip.Origin} → {trip.Destination} ({trip.KgCO2e} kgCO₂e)";
+                TempData["Success"] = $"Trip logged: {trip.RouteDescription} ({trip.KgCO2e} kgCO₂e)";
                 return RedirectToAction("Index");
             }
             catch (HttpRequestException ex)

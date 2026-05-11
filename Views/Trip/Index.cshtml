@@ -92,7 +92,7 @@
                 {
                     <tr>
                         <td style="color:var(--txm)">@trip.TripDate.ToString("dd MMM yyyy")</td>
-                        <td><strong>@trip.Origin → @trip.Destination</strong></td>
+                        <td><strong>@trip.RouteDescription</strong></td>
                         <td>
                             <span class="tag @(trip.TransportMode.StartsWith("Flight") ? "tag-flight" : trip.TransportMode.StartsWith("Train") ? "tag-train" : "tag-car")">
                                 @trip.TransportMode
